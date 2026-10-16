@@ -384,6 +384,7 @@ export const App: React.FC = () => {
             <CreateProject
               onNavigate={handleNavigate}
               onApproveNewProject={handleApproveNewProject}
+              teamMembers={members}
             />
           )}
         </main>

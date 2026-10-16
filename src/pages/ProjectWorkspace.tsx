@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { Project, Task, TeamMember, TaskStatus } from '../types';
 import { AvatarGroup } from '../components/common/AvatarGroup';
+import { ProjectTimelineFlowchart } from '../components/timeline/ProjectTimelineFlowchart';
 
 interface ProjectWorkspaceProps {
   project: Project;
@@ -627,64 +628,14 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
         </div>
       )}
 
-      {/* 4. TIMELINE TAB */}
+      {/* 4. TIMELINE TAB (Interactive Flowchart) */}
       {activeTab === 'timeline' && (
-        <div className="bg-white dark:bg-[#0D131F] rounded-2xl border border-[#E2E8F0] dark:border-slate-800/80 p-6 shadow-xs space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white">Project Gantt & Milestone Timeline</h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Visualizing schedule dependencies, critical path, and milestone deadlines.
-              </p>
-            </div>
-            <div className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800 self-start sm:self-auto">
-              Current Date: Apr 17, 2025
-            </div>
-          </div>
-
-          <div className="border border-slate-200 dark:border-slate-800 rounded-xl p-4 bg-slate-50 dark:bg-slate-900/50 space-y-4">
-            <div className="flex items-center justify-between text-xs font-bold text-slate-600 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 pb-2">
-              <span>Task / Milestone</span>
-              <span>Schedule Span</span>
-              <span>Status</span>
-            </div>
-
-            <div className="space-y-3 text-xs">
-              <div className="bg-white dark:bg-slate-800/80 p-3 rounded-lg border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div>
-                  <div className="font-bold text-slate-900 dark:text-white">Phase 1: Discovery & Requirements</div>
-                  <div className="text-slate-500 dark:text-slate-400 text-[11px]">Milestone: User personas locked</div>
-                </div>
-                <div className="w-48 bg-emerald-100 dark:bg-emerald-950/60 h-4 rounded-full overflow-hidden">
-                  <div className="bg-emerald-500 h-full w-full" />
-                </div>
-                <span className="text-emerald-700 dark:text-emerald-400 font-semibold">Done (Mar 21)</span>
-              </div>
-
-              <div className="bg-white dark:bg-slate-800/80 p-3 rounded-lg border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div>
-                  <div className="font-bold text-slate-900 dark:text-white">Phase 2: Core Engineering & Build</div>
-                  <div className="text-slate-500 dark:text-slate-400 text-[11px]">Critical path: Payment gateway integration</div>
-                </div>
-                <div className="w-48 bg-blue-100 dark:bg-blue-950/60 h-4 rounded-full overflow-hidden relative">
-                  <div className="bg-[#1E60FF] h-full w-3/4" />
-                </div>
-                <span className="text-amber-600 dark:text-amber-400 font-semibold">At Risk · Mar 22 - Apr 18</span>
-              </div>
-
-              <div className="bg-white dark:bg-slate-800/80 p-3 rounded-lg border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div>
-                  <div className="font-bold text-slate-900 dark:text-white">Phase 3: Beta Testing & Demo Review</div>
-                  <div className="text-slate-500 dark:text-slate-400 text-[11px]">Milestone: Classroom Presentation</div>
-                </div>
-                <div className="w-48 bg-slate-200 dark:bg-slate-700 h-4 rounded-full overflow-hidden">
-                  <div className="bg-slate-300 dark:bg-slate-600 h-full w-0" />
-                </div>
-                <span className="text-slate-500 dark:text-slate-400 font-semibold">Apr 19 - Apr 28</span>
-              </div>
-            </div>
-          </div>
-        </div>
+        <ProjectTimelineFlowchart
+          project={project}
+          onOpenRecoveryPlan={() => setShowRecoveryModal(true)}
+          onOpenTaskModal={onOpenTaskModal}
+          tasks={projectTasks}
+        />
       )}
 
       {/* 5. FILES TAB */}

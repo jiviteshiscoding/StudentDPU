@@ -21,33 +21,55 @@ import {
   ArrowRight,
   RotateCcw
 } from 'lucide-react';
-import { DraftPlan, Project } from '../types';
-import { MOCK_DRAFT_PLAN } from '../data/mockData';
+import { DraftPlan, Project, TeamMember } from '../types';
+import { MOCK_DRAFT_PLAN, INITIAL_MEMBERS } from '../data/mockData';
+import { DatePickerModal } from '../components/common/DatePickerModal';
+import { TeamMemberPickerModal } from '../components/common/TeamMemberPickerModal';
+import { ProjexLoader } from '../components/common/ProjexLoader';
 
 interface CreateProjectProps {
   onNavigate: (screen: string, projectId?: string) => void;
   onApproveNewProject: (newProject: Project) => void;
+  teamMembers?: TeamMember[];
 }
 
 export const CreateProject: React.FC<CreateProjectProps> = ({
   onNavigate,
   onApproveNewProject,
+  teamMembers = INITIAL_MEMBERS,
 }) => {
   const [ideaText, setIdeaText] = useState(
     "We're building a campus event platform with event discovery, registration, and an admin dashboard. We have five team members and two weeks. We know React and Supabase, and need a demo ready for class."
   );
+  
+  // Usable Deadline state
   const [deadline, setDeadline] = useState('May 2, 2025');
+  const [daysRemaining, setDaysRemaining] = useState(14);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+
+  // Editable Team selection state
+  const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([
+    'member-alex',
+    'member-maya',
+    'member-daniel',
+    'member-priya',
+    'member-liam'
+  ]);
+  const [showMemberPicker, setShowMemberPicker] = useState(false);
+
   const [tags, setTags] = useState(['React', 'Supabase', 'Student budget']);
   const [newTagInput, setNewTagInput] = useState('');
   const [showTagInput, setShowTagInput] = useState(false);
   const [showMentionHelper, setShowMentionHelper] = useState(true);
-  const [showTemplateMenu, setShowTemplateMenu] = useState(false);
 
   // Draft plan state
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedPlan, setGeneratedPlan] = useState<DraftPlan | null>(null);
   const [refinementInput, setRefinementInput] = useState('');
   const [refinementChangeNotice, setRefinementChangeNotice] = useState<string | null>(null);
+
+  // Selected members objects
+  const selectedMembers = teamMembers.filter(m => selectedMemberIds.includes(m.id));
 
   const handleRemoveTag = (tag: string) => {
     setTags(tags.filter(t => t !== tag));
@@ -65,8 +87,28 @@ export const CreateProject: React.FC<CreateProjectProps> = ({
     setIsGenerating(true);
     setTimeout(() => {
       setIsGenerating(false);
-      setGeneratedPlan({ ...MOCK_DRAFT_PLAN });
-    }, 600);
+
+      // Create draft plan incorporating actual deadline and selected team members
+      const plan: DraftPlan = {
+        ...MOCK_DRAFT_PLAN,
+        schedule: [
+          { milestone: 'Milestone 1: Prototype wireframes & DB schema locked', targetDate: 'Day 3' },
+          { milestone: 'Milestone 2: Core Frontend & Backend synchronized', targetDate: 'Day 7' },
+          { milestone: 'Milestone 3: Regression test & bug fixes', targetDate: 'Day 11' },
+          { milestone: 'Final Submission: Classroom demo', targetDate: `${deadline} (${daysRemaining}d)` },
+        ],
+        // Align suggested roles to selected team members
+        suggestedRoles: selectedMembers.length > 0
+          ? selectedMembers.map(m => ({
+              role: m.role,
+              suggestedPerson: m.name,
+              reason: `Matched for ${m.skills.slice(0, 2).join(' and ')} proficiency.`,
+            }))
+          : MOCK_DRAFT_PLAN.suggestedRoles,
+      };
+
+      setGeneratedPlan(plan);
+    }, 650);
   };
 
   const handleApplyRefinement = (e: React.FormEvent) => {
@@ -81,7 +123,7 @@ export const CreateProject: React.FC<CreateProjectProps> = ({
         { milestone: 'Milestone 1: Prototype wireframes & DB schema locked', targetDate: 'Day 2' },
         { milestone: 'Milestone 2: Frontend & Backend synchronized', targetDate: 'Day 5' },
         { milestone: 'Milestone 3: Regression test & bug fixes', targetDate: 'Day 8' },
-        { milestone: 'Final Submission: Classroom demo', targetDate: 'Day 10 (Apr 27, 2025)' },
+        { milestone: 'Final Submission: Classroom demo', targetDate: 'Day 10' },
       ];
       setRefinementChangeNotice('Updated schedule timeline compressed from 14 days to 10 days.');
     } else if (lower.includes('parallel') || lower.includes('concurrent')) {
@@ -109,12 +151,12 @@ export const CreateProject: React.FC<CreateProjectProps> = ({
       status: 'On track',
       progress: 0,
       dueDate: deadline,
-      daysRemaining: 14,
+      daysRemaining: daysRemaining,
       milestonesTotal: 3,
       milestonesCompleted: 0,
       milestonesInProgress: 1,
       milestonesUpcoming: 2,
-      members: ['member-alex', 'member-maya', 'member-daniel', 'member-priya', 'member-liam'],
+      members: selectedMemberIds,
     };
 
     onApproveNewProject(newProj);
@@ -151,7 +193,16 @@ export const CreateProject: React.FC<CreateProjectProps> = ({
         </div>
       </div>
 
-      {!generatedPlan ? (
+      {/* Brief Loading State with PROJEX Mechanical Loader */}
+      {isGenerating ? (
+        <div className="bg-white dark:bg-[#0D131F] rounded-3xl border border-slate-200 dark:border-slate-800 p-12 shadow-xs">
+          <ProjexLoader
+            label="PROJEX is generating your draft plan..."
+            sublabel="Extracting deliverables, sequencing phases, calculating dependencies, and matching roles"
+            size="lg"
+          />
+        </div>
+      ) : !generatedPlan ? (
         /* STAGE A & B: Natural Language Brief Creation Form */
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           {/* Left Area (8 cols): Input Form */}
@@ -197,41 +248,82 @@ export const CreateProject: React.FC<CreateProjectProps> = ({
               </div>
             )}
 
-            {/* Deadline & Team Row */}
+            {/* Deadline & Team Row (Requirement 1 & 2: Interactive Date Picker & Searchable Team Selector) */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Project Deadline */}
-              <div className="border border-slate-200 dark:border-slate-700/80 rounded-xl p-3 flex items-center justify-between bg-white dark:bg-slate-900/40">
+              {/* Project Deadline Selector */}
+              <button
+                type="button"
+                onClick={() => setShowDatePicker(true)}
+                className="border border-slate-200 dark:border-slate-700/80 hover:border-blue-300 dark:hover:border-blue-700 rounded-xl p-3 flex items-center justify-between bg-white dark:bg-slate-900/40 text-left cursor-pointer transition-all hover:shadow-xs group"
+                aria-label="Open project deadline picker"
+              >
                 <div className="flex items-center gap-2.5">
-                  <Calendar className="w-4 h-4 text-[#1E60FF] dark:text-blue-400" />
-                  <div>
-                    <div className="text-[11px] font-semibold text-slate-400 dark:text-slate-500">Project deadline</div>
-                    <div className="text-xs font-bold text-[#0F172A] dark:text-white">{deadline}</div>
+                  <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-[#1E60FF] dark:text-blue-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                    <Calendar className="w-4 h-4" />
                   </div>
-                </div>
-                <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-              </div>
-
-              {/* Team Selector */}
-              <div className="border border-slate-200 dark:border-slate-700/80 rounded-xl p-3 flex items-center justify-between bg-white dark:bg-slate-900/40">
-                <div className="flex items-center gap-2.5">
-                  <Users className="w-4 h-4 text-[#1E60FF] dark:text-blue-400" />
                   <div>
-                    <div className="text-[11px] font-semibold text-slate-400 dark:text-slate-500">Team</div>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <div className="flex items-center -space-x-1">
-                        <img className="w-5 h-5 rounded-full object-cover ring-1 ring-white dark:ring-slate-900" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150" alt="Member" />
-                        <img className="w-5 h-5 rounded-full object-cover ring-1 ring-white dark:ring-slate-900" src="https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150" alt="Member" />
-                        <img className="w-5 h-5 rounded-full object-cover ring-1 ring-white dark:ring-slate-900" src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150" alt="Member" />
-                        <div className="w-5 h-5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-[10px] font-bold flex items-center justify-center ring-1 ring-white dark:ring-slate-900">
-                          +2
-                        </div>
-                      </div>
-                      <span className="text-xs font-bold text-[#0F172A] dark:text-white">5 members</span>
+                    <div className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 flex items-center gap-1">
+                      <span>Project deadline</span>
+                      <span className="text-[10px] text-[#1E60FF] font-normal underline">edit</span>
+                    </div>
+                    <div className="text-xs font-bold text-[#0F172A] dark:text-white">
+                      {deadline}
+                    </div>
+                    <div className="text-[10px] text-slate-400">
+                      {daysRemaining} days remaining
                     </div>
                   </div>
                 </div>
-                <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-              </div>
+                <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200" />
+              </button>
+
+              {/* Editable Team Member Selector */}
+              <button
+                type="button"
+                onClick={() => setShowMemberPicker(true)}
+                className="border border-slate-200 dark:border-slate-700/80 hover:border-blue-300 dark:hover:border-blue-700 rounded-xl p-3 flex items-center justify-between bg-white dark:bg-slate-900/40 text-left cursor-pointer transition-all hover:shadow-xs group"
+                aria-label="Open team member picker"
+              >
+                <div className="flex items-center gap-2.5 truncate">
+                  <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-[#1E60FF] dark:text-blue-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                    <Users className="w-4 h-4" />
+                  </div>
+                  <div className="truncate">
+                    <div className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 flex items-center gap-1">
+                      <span>Assigned Team</span>
+                      <span className="text-[10px] text-[#1E60FF] font-normal underline">edit</span>
+                    </div>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      {selectedMembers.length === 0 ? (
+                        <span className="text-xs text-rose-500 font-semibold">No members selected</span>
+                      ) : (
+                        <>
+                          <div className="flex items-center -space-x-1 shrink-0">
+                            {selectedMembers.slice(0, 3).map((m) => (
+                              <img
+                                key={m.id}
+                                className="w-5 h-5 rounded-full object-cover ring-1 ring-white dark:ring-slate-900"
+                                src={m.avatarUrl}
+                                alt={m.name}
+                                title={m.name}
+                              />
+                            ))}
+                            {selectedMembers.length > 3 && (
+                              <div className="w-5 h-5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-[10px] font-bold flex items-center justify-center ring-1 ring-white dark:ring-slate-900">
+                                +{selectedMembers.length - 3}
+                              </div>
+                            )}
+                          </div>
+                          <span className="text-xs font-bold text-[#0F172A] dark:text-white truncate">
+                            {selectedMembers.length} member{selectedMembers.length === 1 ? '' : 's'}
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200 shrink-0" />
+              </button>
             </div>
 
             {/* Tags / Keywords */}
@@ -283,7 +375,7 @@ export const CreateProject: React.FC<CreateProjectProps> = ({
                 PROJEX generates reviewable goals, phases, deliverables, and role proposals.
               </span>
               <button
-                disabled={isGenerating || !ideaText.trim()}
+                disabled={isGenerating || !ideaText.trim() || selectedMembers.length === 0}
                 onClick={handleGeneratePlan}
                 className="flex items-center gap-2 px-6 py-2.5 bg-[#1E60FF] hover:bg-[#1A53DE] disabled:opacity-60 text-white rounded-xl text-sm font-semibold shadow-xs transition-all cursor-pointer"
               >
@@ -380,7 +472,7 @@ export const CreateProject: React.FC<CreateProjectProps> = ({
                   DRAFT PLAN — AWAITING LEADER APPROVAL
                 </span>
                 <p className="text-xs text-amber-700 dark:text-amber-300 mt-0.5">
-                  Review the extracted goals, deliverables, phases, dependencies, and role suggestions. You can refine with natural language or approve to activate.
+                  Review the extracted goals, deliverables, phases, dependencies, and role suggestions. Target deadline: <strong>{deadline}</strong> with <strong>{selectedMembers.length} team members</strong> assigned.
                 </p>
               </div>
             </div>
@@ -576,6 +668,26 @@ export const CreateProject: React.FC<CreateProjectProps> = ({
           </div>
         </div>
       )}
+
+      {/* Date Picker Modal */}
+      <DatePickerModal
+        isOpen={showDatePicker}
+        onClose={() => setShowDatePicker(false)}
+        selectedDateStr={deadline}
+        onApplyDate={(formatted, iso, days) => {
+          setDeadline(formatted);
+          setDaysRemaining(days);
+        }}
+      />
+
+      {/* Team Member Picker Modal */}
+      <TeamMemberPickerModal
+        isOpen={showMemberPicker}
+        onClose={() => setShowMemberPicker(false)}
+        availableMembers={teamMembers}
+        selectedMemberIds={selectedMemberIds}
+        onApplySelection={(ids) => setSelectedMemberIds(ids)}
+      />
     </div>
   );
 };

@@ -10,6 +10,7 @@ import {
   Plus,
   X
 } from 'lucide-react';
+import { ProjexLogo } from '../common/ProjexLogo';
 import { Project } from '../../types';
 
 interface SidebarProps {
@@ -67,16 +68,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="h-16 flex items-center justify-between px-6 border-b border-transparent">
           <div 
             onClick={() => handleNavClick('home')}
-            className="flex items-center gap-3 cursor-pointer group"
+            className="flex items-center gap-2.5 cursor-pointer group py-1"
+            title="PROJEX Home"
           >
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#1E60FF] to-[#38BDF8] flex items-center justify-center p-1.5 shadow-sm group-hover:scale-105 transition-transform">
-              <span className="text-white font-black text-sm tracking-widest">P</span>
-            </div>
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-xl font-extrabold text-[#0F172A] dark:text-white tracking-tight font-sans">
-                PROJEX
-              </span>
-            </div>
+            <ProjexLogo variant="mark" size={32} animated={false} className="text-[#1E60FF] group-hover:scale-105 transition-transform" />
+            <span className="text-xl font-extrabold text-[#0F172A] dark:text-white tracking-tight font-sans">
+              PROJEX
+            </span>
           </div>
 
           {/* Close button on mobile */}

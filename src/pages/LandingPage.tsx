@@ -16,6 +16,8 @@ import {
   Moon
 } from 'lucide-react';
 
+import { ProjexLogo } from '../components/common/ProjexLogo';
+
 interface LandingPageProps {
   onGetStarted: () => void;
   onSignIn: () => void;
@@ -36,9 +38,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           {/* Logo */}
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#1E60FF] to-[#38BDF8] flex items-center justify-center shadow-sm">
-              <span className="text-white font-black text-lg tracking-wider">P</span>
-            </div>
+            <ProjexLogo variant="mark" size={36} animated={false} className="text-[#1E60FF]" />
             <div className="flex items-baseline gap-2">
               <span className="text-xl font-bold tracking-tight font-sans text-slate-900 dark:text-white">PROJEX</span>
               <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/70 text-[#1E60FF] dark:text-blue-400 border border-blue-200 dark:border-blue-800">

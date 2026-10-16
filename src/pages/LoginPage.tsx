@@ -13,6 +13,8 @@ import {
   Moon
 } from 'lucide-react';
 
+import { ProjexLogo } from '../components/common/ProjexLogo';
+
 interface LoginPageProps {
   onLoginSuccess: (isLeader: boolean) => void;
   onBackToIntro: () => void;
@@ -97,8 +99,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({
       <div className="max-w-md w-full mx-auto bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-8 shadow-xl space-y-6 my-auto transition-colors">
         {/* Header */}
         <div className="text-center space-y-2">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#1E60FF] to-[#38BDF8] flex items-center justify-center mx-auto shadow-md">
-            <span className="text-white font-black text-2xl tracking-wider">P</span>
+          <div className="flex justify-center mb-1">
+            <ProjexLogo variant="mark" size={48} animated={false} className="text-[#1E60FF]" />
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
             Log in to PROJEX

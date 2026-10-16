@@ -26,6 +26,8 @@ import {
   Bot
 } from 'lucide-react';
 import { ChatMessage, ActionCardData, TeamMember, Project } from '../types';
+import { ChannelBrandIcon } from '../components/common/BrandIcons';
+import { ProjexLogo } from '../components/common/ProjexLogo';
 
 interface AskTeamProps {
   messages: ChatMessage[];
@@ -57,11 +59,11 @@ export const AskTeam: React.FC<AskTeamProps> = ({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const channels = [
-    { name: 'In-app chat', status: 'Active', note: 'Primary workspace thread', icon: '💬' },
-    { name: 'Telegram', status: 'Demo', note: 'Simulated Bot integration', icon: '✈️' },
-    { name: 'Discord', status: 'Demo', note: 'Simulated Webhook integration', icon: '👾' },
-    { name: 'WhatsApp', status: 'Not connected', note: 'Requires Meta API key', icon: '📱' },
-    { name: 'Email', status: 'Not connected', note: 'Requires SMTP service', icon: '✉️' },
+    { name: 'In-app chat', status: 'Active', note: 'Primary workspace thread' },
+    { name: 'Telegram', status: 'Demo', note: 'Simulated Bot integration' },
+    { name: 'Discord', status: 'Demo', note: 'Simulated Webhook integration' },
+    { name: 'WhatsApp', status: 'Not connected', note: 'Requires Meta API key' },
+    { name: 'Email', status: 'Not connected', note: 'Requires SMTP service' },
   ];
 
   const peopleMentions = [
@@ -221,9 +223,10 @@ export const AskTeam: React.FC<AskTeamProps> = ({
             <div className="relative">
               <button
                 onClick={() => setShowChannelDropdown(!showChannelDropdown)}
-                className="flex items-center gap-1.5 text-xs text-[#64748B] dark:text-slate-300 hover:text-[#0F172A] dark:hover:text-white font-medium px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-2xs cursor-pointer transition-colors"
+                className="flex items-center gap-2 text-xs text-[#64748B] dark:text-slate-300 hover:text-[#0F172A] dark:hover:text-white font-medium px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-2xs cursor-pointer transition-colors"
+                aria-label="Select messaging channel"
               >
-                <span>Channel:</span>
+                <ChannelBrandIcon channel={selectedChannel} size={15} />
                 <span className="font-bold text-[#0F172A] dark:text-white">{selectedChannel}</span>
                 <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
               </button>
@@ -243,8 +246,8 @@ export const AskTeam: React.FC<AskTeamProps> = ({
                       }}
                       className="w-full flex items-center justify-between px-3 py-2 text-xs rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-left cursor-pointer"
                     >
-                      <div className="flex items-center gap-2">
-                        <span className="text-base">{ch.icon}</span>
+                      <div className="flex items-center gap-2.5">
+                        <ChannelBrandIcon channel={ch.name} size={18} />
                         <div>
                           <div className="font-semibold text-slate-800 dark:text-slate-200">{ch.name}</div>
                           <div className="text-[10px] text-slate-400">{ch.note}</div>
@@ -301,9 +304,10 @@ export const AskTeam: React.FC<AskTeamProps> = ({
                         {renderFormattedContent(msg.content)}
                       </div>
                       {msg.channel && msg.channel !== 'In-app chat' && (
-                        <span className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">
-                          via {msg.channel} (Simulated)
-                        </span>
+                        <div className="flex items-center gap-1.5 text-[10px] text-slate-400 dark:text-slate-500 mt-1">
+                          <ChannelBrandIcon channel={msg.channel} size={12} />
+                          <span>via {msg.channel} (Simulated)</span>
+                        </div>
                       )}
                     </div>
                     <img
@@ -317,8 +321,8 @@ export const AskTeam: React.FC<AskTeamProps> = ({
                 {/* PROJEX Assistant Message */}
                 {msg.isAssistant && (
                   <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#1E60FF] to-[#38BDF8] text-white flex items-center justify-center shrink-0 mt-1 shadow-xs">
-                      <Sparkles className="w-4 h-4" />
+                    <div className="w-8 h-8 rounded-xl bg-slate-900 text-white flex items-center justify-center shrink-0 mt-1 shadow-xs border border-slate-700">
+                      <ProjexLogo variant="mark" size={22} animated={false} />
                     </div>
                     <div className="space-y-3 flex-1 max-w-2xl">
                       <div className="flex items-center gap-2">
@@ -451,8 +455,8 @@ export const AskTeam: React.FC<AskTeamProps> = ({
             {/* Simulated Typing Indicator */}
             {isPendingResponse && (
               <div className="flex items-start gap-3 animate-fade-rise">
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#1E60FF] to-[#38BDF8] text-white flex items-center justify-center shrink-0 mt-1 shadow-xs">
-                  <Sparkles className="w-4 h-4 animate-spin" />
+                <div className="w-8 h-8 rounded-xl bg-slate-900 text-white flex items-center justify-center shrink-0 mt-1 shadow-xs border border-slate-700">
+                  <ProjexLogo variant="mark" size={22} animated={true} />
                 </div>
                 <div className="p-3.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/60 rounded-2xl rounded-tl-xs flex items-center gap-3">
                   <div className="flex items-center gap-1.5">

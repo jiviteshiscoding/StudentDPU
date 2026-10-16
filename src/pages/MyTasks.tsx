@@ -142,11 +142,11 @@ export const MyTasks: React.FC<MyTasksProps> = ({
   ];
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-6">
+    <div className="p-4 sm:p-8 max-w-7xl mx-auto space-y-6 animate-fade-rise">
       {/* Title & Subtitle */}
       <div>
-        <h1 className="text-3xl font-bold text-[#0F172A] tracking-tight">My tasks</h1>
-        <p className="text-sm text-[#64748B] mt-1 font-normal">
+        <h1 className="text-3xl font-bold text-[#0F172A] dark:text-white tracking-tight">My tasks</h1>
+        <p className="text-sm text-[#64748B] dark:text-slate-400 mt-1 font-normal">
           Your work across all projects, in one place.
         </p>
       </div>
@@ -162,11 +162,11 @@ export const MyTasks: React.FC<MyTasksProps> = ({
               placeholder="Search tasks..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 bg-white border border-[#E2E8F0] rounded-xl text-sm placeholder-[#94A3B8] focus:border-[#1E60FF] focus:ring-1 focus:ring-[#1E60FF] outline-none"
+              className="w-full pl-9 pr-3 py-2 bg-white dark:bg-slate-800/80 border border-[#E2E8F0] dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white placeholder-[#94A3B8] focus:border-[#1E60FF] focus:ring-1 focus:ring-[#1E60FF] outline-none"
             />
           </div>
 
-          <div className="flex items-center gap-1.5 bg-[#F1F5F9]/70 p-1 rounded-xl">
+          <div className="flex items-center gap-1.5 bg-[#F1F5F9]/70 dark:bg-slate-800/60 p-1 rounded-xl">
             {['All', 'To do', 'In progress', 'Blocked', 'Done'].map((st) => (
               <button
                 key={st}
@@ -174,7 +174,7 @@ export const MyTasks: React.FC<MyTasksProps> = ({
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                   statusFilter === st
                     ? 'bg-[#1E60FF] text-white shadow-xs'
-                    : 'text-[#64748B] hover:text-[#0F172A]'
+                    : 'text-[#64748B] dark:text-slate-400 hover:text-[#0F172A] dark:hover:text-white'
                 }`}
               >
                 {st}
@@ -188,7 +188,7 @@ export const MyTasks: React.FC<MyTasksProps> = ({
           <select
             value={selectedProjectFilter}
             onChange={(e) => setSelectedProjectFilter(e.target.value)}
-            className="px-3.5 py-2 bg-white border border-[#E2E8F0] rounded-xl text-xs font-semibold text-[#334155] focus:outline-none focus:border-[#1E60FF] cursor-pointer"
+            className="px-3.5 py-2 bg-white dark:bg-slate-800/80 border border-[#E2E8F0] dark:border-slate-700 rounded-xl text-xs font-semibold text-[#334155] dark:text-slate-200 focus:outline-none focus:border-[#1E60FF] cursor-pointer"
           >
             <option value="all">All projects</option>
             {projects.map(p => (
@@ -198,15 +198,15 @@ export const MyTasks: React.FC<MyTasksProps> = ({
 
           <button
             onClick={() => setSortBy(sortBy === 'due_date' ? 'priority' : 'due_date')}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-white border border-[#E2E8F0] rounded-xl text-xs font-semibold text-[#334155] hover:bg-slate-50 cursor-pointer"
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-white dark:bg-slate-800/80 border border-[#E2E8F0] dark:border-slate-700 rounded-xl text-xs font-semibold text-[#334155] dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer"
           >
             <span>↑↓ Due date</span>
-            <ChevronDown className="w-3.5 h-3.5 text-[#64748B]" />
+            <ChevronDown className="w-3.5 h-3.5 text-[#64748B] dark:text-slate-400" />
           </button>
 
           <button
             onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-1.5 px-4 py-2 bg-[#1E60FF] hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 px-4 py-2 bg-[#1E60FF] hover:bg-[#1A53DE] text-white rounded-xl text-xs font-semibold shadow-xs transition-colors cursor-pointer"
           >
             <Plus className="w-4 h-4 stroke-[2.5]" />
             <span>Add task</span>
@@ -221,11 +221,11 @@ export const MyTasks: React.FC<MyTasksProps> = ({
           const isCollapsed = collapsedGroups[group.id];
 
           return (
-            <div key={group.id} className="bg-white rounded-2xl border border-[#E2E8F0] overflow-hidden shadow-xs">
+            <div key={group.id} className="bg-white dark:bg-[#0D131F] rounded-2xl border border-[#E2E8F0] dark:border-slate-800/80 overflow-hidden shadow-xs">
               {/* Group Header */}
               <button
                 onClick={() => toggleGroup(group.id)}
-                className="w-full flex items-center justify-between px-6 py-3.5 bg-white hover:bg-slate-50/50 transition-colors border-b border-[#F1F5F9] cursor-pointer"
+                className="w-full flex items-center justify-between px-6 py-3.5 bg-white dark:bg-[#0D131F] hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors border-b border-[#F1F5F9] dark:border-slate-800/60 cursor-pointer"
               >
                 <div className="flex items-center gap-2.5">
                   {isCollapsed ? (
@@ -247,7 +247,7 @@ export const MyTasks: React.FC<MyTasksProps> = ({
               {!isCollapsed && (
                 <div>
                   {/* Table Column Labels */}
-                  <div className="grid grid-cols-12 gap-3 px-6 py-2 bg-[#F8FAFC] text-[11px] font-semibold text-[#64748B] border-b border-[#E2E8F0]/60">
+                  <div className="grid grid-cols-12 gap-3 px-6 py-2 bg-[#F8FAFC] dark:bg-slate-900/60 text-[11px] font-semibold text-[#64748B] dark:text-slate-400 border-b border-[#E2E8F0]/60 dark:border-slate-800">
                     <div className="col-span-5 pl-7">Task</div>
                     <div className="col-span-2">Project</div>
                     <div className="col-span-1">Status</div>
@@ -262,20 +262,21 @@ export const MyTasks: React.FC<MyTasksProps> = ({
                       No tasks in this group.
                     </div>
                   ) : (
-                    <div className="divide-y divide-[#F1F5F9]">
+                    <div className="divide-y divide-[#F1F5F9] dark:divide-slate-800/60">
                       {group.items.map((task) => (
                         <div
                           key={task.id}
-                          className="grid grid-cols-12 gap-3 px-6 py-3.5 items-center hover:bg-[#F8FAFC]/80 transition-colors"
+                          className="grid grid-cols-12 gap-3 px-6 py-3.5 items-center hover:bg-[#F8FAFC]/80 dark:hover:bg-slate-800/40 transition-colors"
                         >
                           {/* Task Info with Checkbox */}
                           <div className="col-span-5 flex items-start gap-3">
                             <button
                               onClick={() => onToggleTaskComplete(task.id)}
+                              aria-label={`Toggle completion for ${task.title}`}
                               className={`w-5 h-5 rounded-full border-2 mt-0.5 shrink-0 flex items-center justify-center transition-colors cursor-pointer ${
                                 task.status === 'Done'
                                   ? 'border-emerald-500 bg-emerald-500 text-white'
-                                  : 'border-slate-300 hover:border-[#1E60FF]'
+                                  : 'border-slate-300 dark:border-slate-600 hover:border-[#1E60FF]'
                               }`}
                             >
                               {task.status === 'Done' && <CheckCircle2 className="w-4 h-4 text-white" />}
@@ -283,13 +284,13 @@ export const MyTasks: React.FC<MyTasksProps> = ({
                             <div>
                               <div
                                 onClick={() => onOpenTaskModal(task)}
-                                className={`text-sm font-semibold cursor-pointer hover:text-[#1E60FF] ${
-                                  task.status === 'Done' ? 'line-through text-slate-400' : 'text-[#0F172A]'
+                                className={`text-sm font-semibold cursor-pointer hover:text-[#1E60FF] dark:hover:text-blue-400 ${
+                                  task.status === 'Done' ? 'line-through text-slate-400 dark:text-slate-500' : 'text-[#0F172A] dark:text-white'
                                 }`}
                               >
                                 {task.title}
                               </div>
-                              <p className="text-xs text-[#64748B] mt-0.5 line-clamp-1">
+                              <p className="text-xs text-[#64748B] dark:text-slate-400 mt-0.5 line-clamp-1">
                                 {task.summary}
                               </p>
                             </div>
@@ -301,7 +302,7 @@ export const MyTasks: React.FC<MyTasksProps> = ({
                               className="w-2.5 h-2.5 rounded-full shrink-0"
                               style={{ backgroundColor: task.projectColor }}
                             />
-                            <span className="text-xs text-[#334155] font-medium truncate">
+                            <span className="text-xs text-[#334155] dark:text-slate-300 font-medium truncate">
                               {task.projectName}
                             </span>
                           </div>
@@ -406,13 +407,13 @@ export const MyTasks: React.FC<MyTasksProps> = ({
 
       {/* Add Task Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg p-6 animate-in fade-in zoom-in-95">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-              <h2 className="text-lg font-bold text-slate-900">Add new task</h2>
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-lg p-6 animate-fade-rise">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white">Add new task</h2>
               <button 
                 onClick={() => setShowAddModal(false)}
-                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-lg"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -420,35 +421,35 @@ export const MyTasks: React.FC<MyTasksProps> = ({
 
             <form onSubmit={handleCreateTask} className="mt-4 space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Task title</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Task title</label>
                 <input
                   type="text"
                   required
                   placeholder="e.g. Conduct usability walkthrough"
                   value={newTaskTitle}
                   onChange={(e) => setNewTaskTitle(e.target.value)}
-                  className="w-full px-3.5 py-2 text-sm border border-slate-300 rounded-xl focus:border-[#1E60FF] focus:ring-1 focus:ring-[#1E60FF] outline-none"
+                  className="w-full px-3.5 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl focus:border-[#1E60FF] outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Summary / Context</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Summary / Context</label>
                 <textarea
                   rows={2}
                   placeholder="Brief note on requirements or blocker details"
                   value={newTaskSummary}
                   onChange={(e) => setNewTaskSummary(e.target.value)}
-                  className="w-full px-3.5 py-2 text-sm border border-slate-300 rounded-xl focus:border-[#1E60FF] focus:ring-1 focus:ring-[#1E60FF] outline-none"
+                  className="w-full px-3.5 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl focus:border-[#1E60FF] outline-none"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Project</label>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Project</label>
                   <select
                     value={newTaskProject}
                     onChange={(e) => setNewTaskProject(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:border-[#1E60FF] outline-none"
+                    className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl focus:border-[#1E60FF] outline-none"
                   >
                     {projects.map(p => (
                       <option key={p.id} value={p.id}>{p.name}</option>
@@ -457,11 +458,11 @@ export const MyTasks: React.FC<MyTasksProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Priority</label>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Priority</label>
                   <select
                     value={newTaskPriority}
                     onChange={(e) => setNewTaskPriority(e.target.value as Priority)}
-                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:border-[#1E60FF] outline-none"
+                    className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl focus:border-[#1E60FF] outline-none"
                   >
                     <option value="High">High</option>
                     <option value="Medium">Medium</option>
@@ -472,21 +473,21 @@ export const MyTasks: React.FC<MyTasksProps> = ({
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Due date</label>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Due date</label>
                   <input
                     type="date"
                     value={newTaskDue}
                     onChange={(e) => setNewTaskDue(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:border-[#1E60FF] outline-none"
+                    className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl focus:border-[#1E60FF] outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Assignee</label>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Assignee</label>
                   <select
                     value={newTaskOwner}
                     onChange={(e) => setNewTaskOwner(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:border-[#1E60FF] outline-none"
+                    className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl focus:border-[#1E60FF] outline-none"
                   >
                     {teamMembers.map(m => (
                       <option key={m.id} value={m.id}>{m.name} ({m.role})</option>
@@ -495,17 +496,17 @@ export const MyTasks: React.FC<MyTasksProps> = ({
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+                  className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-[#1E60FF] hover:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow-xs transition-colors cursor-pointer"
+                  className="px-5 py-2 bg-[#1E60FF] hover:bg-[#1A53DE] text-white text-xs font-semibold rounded-xl shadow-xs transition-colors cursor-pointer"
                 >
                   Create task
                 </button>

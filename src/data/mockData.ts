@@ -3,7 +3,7 @@ import { TeamMember, Task, Project, FileItem, ActivityEvent, ChatMessage, DraftP
 export const CURRENT_USER: TeamMember = {
   id: 'member-alex',
   name: 'Alex Rivera',
-  email: 'alex.rivera@orbit.edu',
+  email: 'alex.rivera@projex.edu',
   role: 'Project Lead',
   roleCategory: 'Lead',
   skills: ['Planning', 'Product'],
@@ -26,7 +26,7 @@ export const INITIAL_MEMBERS: TeamMember[] = [
   {
     id: 'member-maya',
     name: 'Maya Chen',
-    email: 'maya.chen@orbit.edu',
+    email: 'maya.chen@projex.edu',
     role: 'Designer',
     roleCategory: 'Designer',
     skills: ['UI/UX', 'Figma'],
@@ -46,7 +46,7 @@ export const INITIAL_MEMBERS: TeamMember[] = [
   {
     id: 'member-daniel',
     name: 'Daniel Kim',
-    email: 'daniel.kim@orbit.edu',
+    email: 'daniel.kim@projex.edu',
     role: 'Developer',
     roleCategory: 'Developer',
     skills: ['React', 'TypeScript'],
@@ -66,7 +66,7 @@ export const INITIAL_MEMBERS: TeamMember[] = [
   {
     id: 'member-priya',
     name: 'Priya Singh',
-    email: 'priya.singh@orbit.edu',
+    email: 'priya.singh@projex.edu',
     role: 'Developer',
     roleCategory: 'Developer',
     skills: ['APIs', 'Database'],
@@ -86,7 +86,7 @@ export const INITIAL_MEMBERS: TeamMember[] = [
   {
     id: 'member-jamie',
     name: 'Jamie Chen',
-    email: 'jamie.chen@orbit.edu',
+    email: 'jamie.chen@projex.edu',
     role: 'QA & Research',
     roleCategory: 'QA',
     skills: ['Testing', 'User research'],

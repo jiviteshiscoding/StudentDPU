@@ -149,9 +149,29 @@ export interface ChatMessage {
 
 export interface ActionCardData {
   id: string;
-  type: 'meeting' | 'message';
+  type: 'meeting' | 'message' | 'task_update';
   title: string;
   description: string;
+  taskId?: string;
+  projectId?: string;
+  currentStatus?: string;
+  newStatus?: TaskStatus;
+  reason?: string;
+  channel?: string;
+  recipientUserId?: string;
+  recipientUserIds?: string[];
+  recipientRole?: string;
+  recipientCount?: number;
+  telegramDelivery?: {
+    resolvedRecipients?: {
+      userId: string;
+      name: string;
+      role?: string;
+      isLinked: boolean;
+      username?: string | null;
+      status: 'linked' | 'not_linked' | 'simulated';
+    }[];
+  };
   suggestedTimes?: string[];
   attendees?: { name: string; avatar: string }[];
   targetPerson?: { name: string; role: string; avatar: string };

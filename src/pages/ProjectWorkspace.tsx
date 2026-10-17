@@ -51,12 +51,28 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
   // Filter tasks belonging to this project
   const projectTasks = allTasks.filter(t => t.projectId === project.id);
 
-  // Mock members for the project
-  const members = [
-    { name: 'Emily Chen', role: 'Product Designer', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150', workload: 80, barColor: '#8B5CF6' },
-    { name: 'Jordan Kim', role: 'Full Stack Developer', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150', workload: 65, barColor: '#2563EB' },
-    { name: 'Alex Park', role: 'QA Engineer', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150', workload: 40, barColor: '#38BDF8' }
-  ];
+  // Compute actual members associated with this project from teamMembers or tasks
+  const projectMemberIds = new Set(project.members || []);
+  // Also collect members assigned to project tasks
+  projectTasks.forEach(t => { if (t.ownerId) projectMemberIds.add(t.ownerId); });
+
+  const projectMembers = teamMembers.filter(m => projectMemberIds.has(m.id));
+  const members = projectMembers.map(m => {
+    const memberTasks = projectTasks.filter(t => t.ownerId === m.id);
+    const completed = memberTasks.filter(t => t.status === 'Done').length;
+    const efficiencyRate = memberTasks.length > 0 ? Math.round((completed / memberTasks.length) * 100) : (m.efficiency?.rate || 100);
+    return {
+      id: m.id,
+      name: m.name,
+      role: m.role,
+      avatar: m.avatarUrl,
+      workload: m.workload || (memberTasks.length * 20),
+      efficiency: efficiencyRate,
+      tasksCount: memberTasks.length,
+      completedCount: completed,
+      barColor: m.roleCategory === 'Lead' ? '#8B5CF6' : m.roleCategory === 'Designer' ? '#EC4899' : '#2563EB',
+    };
+  });
 
   const tabs = [
     { id: 'overview', label: 'Overview', icon: FileText },
@@ -164,8 +180,10 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
                 <span>Project status</span>
               </div>
-              <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400 mt-2">On track</div>
-              <div className="text-xs text-[#64748B] dark:text-slate-400 mt-1">Progressing as planned.</div>
+              <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400 mt-2">{project.status || 'Active'}</div>
+              <div className="text-xs text-[#64748B] dark:text-slate-400 mt-1">
+                {projectTasks.some(t => t.status === 'Blocked') ? 'Has blocked tasks needing attention' : 'Progressing as planned.'}
+              </div>
             </div>
 
             {/* Progress */}
@@ -174,21 +192,32 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
                 <span className="text-[#1E60FF] dark:text-blue-400 font-bold">||</span>
                 <span>Progress</span>
               </div>
-              <div className="text-xl font-bold text-[#0F172A] dark:text-white mt-2">68%</div>
+              <div className="text-xl font-bold text-[#0F172A] dark:text-white mt-2">
+                {projectTasks.length > 0 
+                  ? Math.round((projectTasks.filter(t => t.status === 'Done').length / projectTasks.length) * 100) 
+                  : (project.progress || 0)}%
+              </div>
               <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full mt-2 overflow-hidden">
-                <div className="bg-[#1E60FF] h-full rounded-full" style={{ width: '68%' }} />
+                <div 
+                  className="bg-[#1E60FF] h-full rounded-full transition-all" 
+                  style={{ 
+                    width: `${projectTasks.length > 0 
+                      ? Math.round((projectTasks.filter(t => t.status === 'Done').length / projectTasks.length) * 100) 
+                      : (project.progress || 0)}%` 
+                  }} 
+                />
               </div>
             </div>
 
-            {/* Milestones */}
+            {/* Milestones / Tasks */}
             <div className="bg-white dark:bg-[#0D131F] p-5 rounded-2xl border border-[#E2E8F0] dark:border-slate-800/80 shadow-xs">
               <div className="flex items-center gap-2 text-xs font-semibold text-[#64748B] dark:text-slate-400">
                 <Flag className="w-4 h-4 text-[#1E60FF] dark:text-blue-400" />
-                <span>Milestones</span>
+                <span>Tasks & Milestones</span>
               </div>
-              <div className="text-xl font-bold text-[#0F172A] dark:text-white mt-2">3 total</div>
+              <div className="text-xl font-bold text-[#0F172A] dark:text-white mt-2">{projectTasks.length} total</div>
               <div className="text-xs text-[#64748B] dark:text-slate-400 mt-1">
-                1 completed · 1 in progress · 1 upcoming
+                {projectTasks.filter(t => t.status === 'Done').length} completed · {projectTasks.filter(t => t.status === 'In progress').length} in progress · {projectTasks.filter(t => t.status === 'To do').length} upcoming
               </div>
             </div>
 
@@ -198,8 +227,10 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
                 <Calendar className="w-4 h-4 text-[#1E60FF] dark:text-blue-400" />
                 <span>Due date</span>
               </div>
-              <div className="text-xl font-bold text-[#0F172A] dark:text-white mt-2">Apr 28, 2025</div>
-              <div className="text-xs text-[#64748B] dark:text-slate-400 mt-1">14 days remaining</div>
+              <div className="text-xl font-bold text-[#0F172A] dark:text-white mt-2">{project.dueDate || 'No deadline'}</div>
+              <div className="text-xs text-[#64748B] dark:text-slate-400 mt-1">
+                {project.dueDate ? 'Target completion' : 'Flexible schedule'}
+              </div>
             </div>
           </div>
 
@@ -278,74 +309,56 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
                   </div>
 
                   <div className="divide-y divide-slate-100 dark:divide-slate-800/80 text-xs">
-                    {/* Task 1 */}
-                    <div className="grid grid-cols-12 gap-2 px-4 py-3 items-center hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
-                      <div className="col-span-5 font-semibold text-[#0F172A] dark:text-white">
-                        Build event registration flow
+                    {projectTasks.length === 0 ? (
+                      <div className="p-8 text-center text-slate-500 dark:text-slate-400">
+                        No tasks created for this project yet. Use the AI Assistant or Add Task button to add tasks.
                       </div>
-                      <div className="col-span-2">
-                        <span className="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400 font-semibold text-[11px]">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Done
-                        </span>
-                      </div>
-                      <div className="col-span-3 flex items-center gap-2 truncate">
-                        <img
-                          src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150"
-                          alt="Emily Chen"
-                          className="w-5 h-5 rounded-full object-cover"
-                        />
-                        <span className="text-slate-700 dark:text-slate-300 truncate">Emily Chen</span>
-                      </div>
-                      <div className="col-span-2 text-right text-slate-500 dark:text-slate-400">
-                        Apr 4, 2025
-                      </div>
-                    </div>
-
-                    {/* Task 2 */}
-                    <div className="grid grid-cols-12 gap-2 px-4 py-3 items-center hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
-                      <div className="col-span-5 font-semibold text-[#0F172A] dark:text-white">
-                        Develop event management dashboard
-                      </div>
-                      <div className="col-span-2">
-                        <span className="inline-flex items-center gap-1.5 text-blue-700 dark:text-blue-400 font-semibold text-[11px]">
-                          <span className="w-1.5 h-1.5 rounded-full bg-[#1E60FF]" /> In progress
-                        </span>
-                      </div>
-                      <div className="col-span-3 flex items-center gap-2 truncate">
-                        <img
-                          src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150"
-                          alt="Jordan Kim"
-                          className="w-5 h-5 rounded-full object-cover"
-                        />
-                        <span className="text-slate-700 dark:text-slate-300 truncate">Jordan Kim</span>
-                      </div>
-                      <div className="col-span-2 text-right text-slate-500 dark:text-slate-400">
-                        Apr 15, 2025
-                      </div>
-                    </div>
-
-                    {/* Task 3 */}
-                    <div className="grid grid-cols-12 gap-2 px-4 py-3 items-center hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
-                      <div className="col-span-5 font-semibold text-[#0F172A] dark:text-white">
-                        Run student beta testing
-                      </div>
-                      <div className="col-span-2">
-                        <span className="inline-flex items-center gap-1.5 text-slate-600 dark:text-slate-400 font-semibold text-[11px]">
-                          <span className="w-1.5 h-1.5 rounded-full bg-slate-400" /> To do
-                        </span>
-                      </div>
-                      <div className="col-span-3 flex items-center gap-2 truncate">
-                        <img
-                          src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150"
-                          alt="Alex Park"
-                          className="w-5 h-5 rounded-full object-cover"
-                        />
-                        <span className="text-slate-700 dark:text-slate-300 truncate">Alex Park</span>
-                      </div>
-                      <div className="col-span-2 text-right text-slate-500 dark:text-slate-400">
-                        Apr 24, 2025
-                      </div>
-                    </div>
+                    ) : (
+                      projectTasks.slice(0, 6).map((t) => (
+                        <div
+                          key={t.id}
+                          onClick={() => onOpenTaskModal(t)}
+                          className="grid grid-cols-12 gap-2 px-4 py-3 items-center hover:bg-slate-50/50 dark:hover:bg-slate-800/40 cursor-pointer transition-colors"
+                        >
+                          <div className="col-span-5 font-semibold text-[#0F172A] dark:text-white truncate">
+                            {t.title}
+                          </div>
+                          <div className="col-span-2">
+                            <span className={`inline-flex items-center gap-1.5 font-semibold text-[11px] ${
+                              t.status === 'Done' ? 'text-emerald-700 dark:text-emerald-400' :
+                              t.status === 'In progress' ? 'text-blue-700 dark:text-blue-400' :
+                              t.status === 'Blocked' ? 'text-rose-700 dark:text-rose-400' :
+                              'text-slate-600 dark:text-slate-400'
+                            }`}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${
+                                t.status === 'Done' ? 'bg-emerald-500' :
+                                t.status === 'In progress' ? 'bg-[#1E60FF]' :
+                                t.status === 'Blocked' ? 'bg-rose-500' :
+                                'bg-slate-400'
+                              }`} />
+                              {t.status}
+                            </span>
+                          </div>
+                          <div className="col-span-3 flex items-center gap-2 truncate">
+                            {t.ownerAvatar ? (
+                              <img
+                                src={t.ownerAvatar}
+                                alt={t.ownerName}
+                                className="w-5 h-5 rounded-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-5 h-5 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-[10px] text-slate-600 dark:text-slate-300 font-bold">
+                                {t.ownerName?.charAt(0) || '?'}
+                              </div>
+                            )}
+                            <span className="text-slate-700 dark:text-slate-300 truncate">{t.ownerName || 'Unassigned'}</span>
+                          </div>
+                          <div className="col-span-2 text-right text-slate-500 dark:text-slate-400">
+                            {t.dueDateDisplay || t.dueDate || 'No deadline'}
+                          </div>
+                        </div>
+                      ))
+                    )}
                   </div>
                 </div>
               </div>
@@ -354,92 +367,84 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
             {/* Right Column (5 cols): Needs attention & Team workload */}
             <div className="lg:col-span-5 space-y-6">
               {/* Needs Attention Card */}
-              <div className="bg-white dark:bg-[#0D131F] rounded-2xl border border-[#E2E8F0] dark:border-slate-800/80 p-6 shadow-xs">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <AlertTriangle className="w-4 h-4 text-amber-500" />
-                    <h2 className="text-sm font-bold text-[#0F172A] dark:text-white">Needs attention</h2>
-                  </div>
-                  <button 
-                    className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-                    aria-label="More options"
-                  >
-                    <MoreHorizontal className="w-4 h-4" />
-                  </button>
-                </div>
-
-                {/* Red blocker alert */}
-                <div className="bg-rose-50/70 dark:bg-rose-950/40 border border-rose-100 dark:border-rose-900/60 rounded-xl p-4">
-                  <div className="flex items-start gap-2">
-                    <span className="w-4 h-4 rounded-full bg-rose-500 text-white flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">
-                      !
-                    </span>
-                    <div>
-                      <h3 className="text-xs font-bold text-rose-900 dark:text-rose-200">
-                        Event payment integration is blocked
-                      </h3>
-                      <p className="text-xs text-rose-700 dark:text-rose-300 mt-1 leading-relaxed">
-                        The third-party payment provider requires additional university compliance review, which is delaying development by ~1 week.
-                      </p>
+              {projectTasks.some(t => t.status === 'Blocked') && (
+                <div className="bg-white dark:bg-[#0D131F] rounded-2xl border border-[#E2E8F0] dark:border-slate-800/80 p-6 shadow-xs">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4 text-rose-500" />
+                      <h2 className="text-sm font-bold text-[#0F172A] dark:text-white">Needs attention</h2>
                     </div>
                   </div>
 
-                  <button
-                    onClick={() => setShowRecoveryModal(true)}
-                    className="mt-3.5 px-3.5 py-1.5 bg-[#1E60FF] hover:bg-[#1A53DE] text-white text-xs font-semibold rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <span>Review recovery plan</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
+                  <div className="bg-rose-50/70 dark:bg-rose-950/40 border border-rose-100 dark:border-rose-900/60 rounded-xl p-4">
+                    <div className="flex items-start gap-2">
+                      <span className="w-4 h-4 rounded-full bg-rose-500 text-white flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">
+                        !
+                      </span>
+                      <div>
+                        <h3 className="text-xs font-bold text-rose-900 dark:text-rose-200">
+                          Blocked Tasks in Project
+                        </h3>
+                        <p className="text-xs text-rose-700 dark:text-rose-300 mt-1 leading-relaxed">
+                          {projectTasks.filter(t => t.status === 'Blocked').length} task(s) currently blocked. Review the task list to unblock dependencies.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
 
-              {/* Team Workload Card */}
+              {/* Team Workload & Efficiency Card */}
               <div className="bg-white dark:bg-[#0D131F] rounded-2xl border border-[#E2E8F0] dark:border-slate-800/80 p-6 shadow-xs">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
                     <Users className="w-4 h-4 text-[#1E60FF] dark:text-blue-400" />
-                    <h2 className="text-sm font-bold text-[#0F172A] dark:text-white">Team workload</h2>
+                    <h2 className="text-sm font-bold text-[#0F172A] dark:text-white">Team members & efficiency</h2>
                   </div>
-                  <button 
-                    className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-                    aria-label="More workload options"
-                  >
-                    <MoreHorizontal className="w-4 h-4" />
-                  </button>
+                  <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                    {members.length} {members.length === 1 ? 'member' : 'members'}
+                  </span>
                 </div>
 
                 <div className="space-y-4">
-                  {members.map((m, idx) => (
-                    <div key={idx} className="flex items-center justify-between gap-4">
-                      <div className="flex items-center gap-2.5 truncate">
-                        <img
-                          src={m.avatar}
-                          alt={m.name}
-                          className="w-8 h-8 rounded-full object-cover shrink-0 ring-1 ring-slate-200 dark:ring-slate-700"
-                        />
-                        <div className="truncate">
-                          <div className="text-xs font-bold text-[#0F172A] dark:text-white truncate">{m.name}</div>
-                          <div className="text-[11px] text-[#64748B] dark:text-slate-400 truncate">{m.role}</div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2.5 w-32 shrink-0">
-                        <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 w-8 text-right">
-                          {m.workload}%
-                        </span>
-                        <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
-                          <div
-                            className="h-full rounded-full"
-                            style={{
-                              width: `${m.workload}%`,
-                              backgroundColor: m.barColor,
-                            }}
-                          />
-                        </div>
-                      </div>
+                  {members.length === 0 ? (
+                    <div className="p-4 text-center text-xs text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900/40 rounded-xl border border-dashed border-slate-200 dark:border-slate-800">
+                      No team members assigned yet. Add members via Project Settings or Invite link.
                     </div>
-                  ))}
+                  ) : (
+                    members.map((m) => (
+                      <div key={m.id || m.name} className="flex items-center justify-between gap-4 p-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                        <div className="flex items-center gap-2.5 truncate">
+                          <img
+                            src={m.avatar}
+                            alt={m.name}
+                            className="w-8 h-8 rounded-full object-cover shrink-0 ring-1 ring-slate-200 dark:ring-slate-700"
+                          />
+                          <div className="truncate">
+                            <div className="text-xs font-bold text-[#0F172A] dark:text-white truncate">{m.name}</div>
+                            <div className="text-[11px] text-[#64748B] dark:text-slate-400 truncate">
+                              {m.role} • {m.completedCount}/{m.tasksCount} done
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col items-end gap-1 shrink-0 w-28">
+                          <div className="flex items-center justify-between w-full text-[11px]">
+                            <span className="text-slate-400">Efficiency</span>
+                            <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                              {m.efficiency}%
+                            </span>
+                          </div>
+                          <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                            <div
+                              className="h-full rounded-full bg-emerald-500"
+                              style={{ width: `${Math.min(100, Math.max(0, m.efficiency))}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             </div>

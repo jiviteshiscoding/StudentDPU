@@ -23,6 +23,8 @@ interface MyTasksProps {
   onToggleTaskComplete: (taskId: string) => void;
   onAddTask: (newTask: Partial<Task>) => void;
   onOpenTaskModal: (task: Task) => void;
+  isLoading?: boolean;
+  errorMessage?: string | null;
 }
 
 export const MyTasks: React.FC<MyTasksProps> = ({
@@ -32,6 +34,8 @@ export const MyTasks: React.FC<MyTasksProps> = ({
   onToggleTaskComplete,
   onAddTask,
   onOpenTaskModal,
+  isLoading = false,
+  errorMessage = null,
 }) => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('All');
@@ -213,6 +217,22 @@ export const MyTasks: React.FC<MyTasksProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Error State Banner */}
+      {errorMessage && (
+        <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-xs text-rose-700 dark:text-rose-300">
+          <p className="font-bold">Unable to sync tasks with Supabase</p>
+          <p className="mt-0.5">{errorMessage}</p>
+        </div>
+      )}
+
+      {/* Loading Skeleton */}
+      {isLoading && (
+        <div className="p-6 rounded-2xl bg-white dark:bg-[#0D131F] border border-slate-200 dark:border-slate-800 text-xs text-slate-500 animate-pulse flex items-center gap-2.5">
+          <div className="w-4 h-4 rounded-full border-2 border-blue-500 border-t-transparent animate-spin" />
+          <span>Syncing tasks from Supabase...</span>
+        </div>
+      )}
 
       {/* Task Groups Table Container */}
       <div className="space-y-6">

@@ -61,67 +61,148 @@ export const ProjectTimelineFlowchart: React.FC<ProjectTimelineFlowchartProps> =
   onOpenTaskModal,
   tasks = [],
 }) => {
-  const [selectedPhaseId, setSelectedPhaseId] = useState<string>('phase-2');
+  const [selectedPhaseId, setSelectedPhaseId] = useState<string>('phase-1');
   const [inspectingNode, setInspectingNode] = useState<any | null>(null);
 
-  // Phase Definitions based on active project specifications
-  const phases: FlowchartPhase[] = [
-    {
-      id: 'phase-1',
-      number: 1,
-      name: 'Discovery & Requirements',
-      dateRange: 'Mar 1 – Mar 21',
-      status: 'completed',
-      statusLabel: 'Completed',
-      progress: 100,
-      milestone: 'User personas & scope locked',
-      milestoneDate: 'Mar 21',
-      tasks: [
-        { id: 't1-1', title: 'User personas & journey maps', owner: 'Emily Chen', status: 'Done', role: 'Designer' },
-        { id: 't1-2', title: 'Technical architecture brief', owner: 'Alex Rivera', status: 'Done', role: 'Lead' },
-      ],
-      description: 'Defined project requirements, student user personas, and initial technical stack architecture.',
-    },
-    {
-      id: 'phase-2',
-      number: 2,
-      name: 'Core Engineering & Build',
-      dateRange: 'Mar 22 – Apr 18',
-      status: 'at-risk',
-      statusLabel: 'At Risk · In Progress',
-      progress: 72,
-      milestone: 'Payment gateway integration locked',
-      milestoneDate: 'Apr 18',
-      tasks: [
-        { id: 't2-1', title: 'Event registration flow UI', owner: 'Emily Chen', status: 'Done', role: 'Designer', parallelSafe: true },
-        { id: 't2-2', title: 'Event management dashboard', owner: 'Jordan Kim', status: 'In progress', role: 'Developer' },
-        { id: 't2-3', title: 'Payment gateway API integration', owner: 'Daniel Kim', status: 'Blocked', role: 'Developer', isBlocker: true },
-      ],
-      blockerInfo: {
-        title: 'Payment gateway integration blocked',
-        reason: 'Awaiting university IT single-sign-on and security compliance review.',
-        delay: '~1 week schedule impact',
+  // Phase Definitions: dynamically constructed from project and actual tasks
+  const isDemoProject = project.id === 'campus-events' || (!tasks || tasks.length === 0);
+
+  const phases: FlowchartPhase[] = React.useMemo(() => {
+    // If user has real tasks for this project, derive real phases and status
+    if (tasks && tasks.length > 0) {
+      const completedTasks = tasks.filter(t => t.status === 'Done');
+      const inProgressTasks = tasks.filter(t => t.status === 'In progress' || t.status === 'In Review');
+      const blockedTasks = tasks.filter(t => t.status === 'Blocked' || t.isRisk);
+      const todoTasks = tasks.filter(t => t.status === 'To do' || t.status === 'Backlog');
+
+      const total = tasks.length;
+      const progress = total > 0 ? Math.round((completedTasks.length / total) * 100) : 0;
+
+      // Group into dynamic phases
+      const p1Tasks: FlowchartTask[] = completedTasks.map(t => ({
+        id: t.id,
+        title: t.title,
+        owner: t.ownerName || 'Member',
+        status: 'Done',
+        role: 'Completed',
+      }));
+
+      const p2Tasks: FlowchartTask[] = [...inProgressTasks, ...blockedTasks].map(t => ({
+        id: t.id,
+        title: t.title,
+        owner: t.ownerName || 'Member',
+        status: t.status,
+        role: t.status === 'Blocked' ? 'Blocker' : 'In Progress',
+        isBlocker: t.status === 'Blocked' || t.isRisk,
+      }));
+
+      const p3Tasks: FlowchartTask[] = todoTasks.map(t => ({
+        id: t.id,
+        title: t.title,
+        owner: t.ownerName || 'Member',
+        status: 'To do',
+        role: 'Upcoming',
+      }));
+
+      return [
+        {
+          id: 'phase-1',
+          number: 1,
+          name: 'Completed Sprints',
+          dateRange: 'Recent',
+          status: completedTasks.length > 0 ? 'completed' : 'upcoming',
+          statusLabel: completedTasks.length > 0 ? 'Completed' : 'Pending',
+          progress: completedTasks.length > 0 ? 100 : 0,
+          milestone: completedTasks[0]?.title || 'Foundation Milestones',
+          milestoneDate: completedTasks[0]?.dueDateDisplay || 'Completed',
+          tasks: p1Tasks.length > 0 ? p1Tasks.slice(0, 4) : [{ id: 'none-1', title: 'No completed tasks yet', owner: 'Team', status: 'To do', role: 'Pending' }],
+          description: `${completedTasks.length} task(s) completed successfully.`,
+        },
+        {
+          id: 'phase-2',
+          number: 2,
+          name: 'Active Sprint & Execution',
+          dateRange: 'Current',
+          status: blockedTasks.length > 0 ? 'at-risk' : inProgressTasks.length > 0 ? 'in-progress' : 'upcoming',
+          statusLabel: blockedTasks.length > 0 ? 'At Risk · In Progress' : inProgressTasks.length > 0 ? 'In Progress' : 'Planned',
+          progress: progress,
+          milestone: blockedTasks[0]?.title || inProgressTasks[0]?.title || 'Core Deliverables',
+          milestoneDate: project.dueDate || 'Active',
+          tasks: p2Tasks.length > 0 ? p2Tasks.slice(0, 5) : [{ id: 'none-2', title: 'No active tasks in progress', owner: 'Team', status: 'To do', role: 'Ready' }],
+          blockerInfo: blockedTasks.length > 0 ? {
+            title: blockedTasks[0].title,
+            reason: blockedTasks[0].summary || 'Task flagged as blocked. Requires immediate team review.',
+            delay: 'Needs unblocking',
+          } : undefined,
+          description: 'Current tasks actively being worked on by the team.',
+        },
+        {
+          id: 'phase-3',
+          number: 3,
+          name: 'Upcoming Delivery & Milestones',
+          dateRange: project.dueDate || 'Upcoming',
+          status: 'upcoming',
+          statusLabel: 'Upcoming',
+          progress: 0,
+          milestone: todoTasks[0]?.title || 'Final Project Hand-off',
+          milestoneDate: project.dueDate || 'Flexible',
+          dependsOn: 'phase-2',
+          tasks: p3Tasks.length > 0 ? p3Tasks.slice(0, 4) : [{ id: 'none-3', title: 'All planned tasks are scheduled', owner: 'Team', status: 'To do', role: 'Pending' }],
+          description: 'Scheduled milestones and backlog tasks queued for upcoming sprints.',
+        },
+      ];
+    }
+
+    // Default template for empty demo state (without false critical blocker)
+    return [
+      {
+        id: 'phase-1',
+        number: 1,
+        name: 'Sprint Planning & Setup',
+        dateRange: 'Sprint 01',
+        status: 'completed',
+        statusLabel: 'Completed',
+        progress: 100,
+        milestone: 'Workspace initialized',
+        milestoneDate: 'Setup',
+        tasks: [
+          { id: 't1-1', title: 'Project created & team invited', owner: 'You', status: 'Done', role: 'Lead' },
+        ],
+        description: 'Initial project setup and repository workspace configuration.',
       },
-      description: 'Active sprint implementing authentication, event RSVP registrations, and admin management.',
-    },
-    {
-      id: 'phase-3',
-      number: 3,
-      name: 'Beta Testing & Demo Review',
-      dateRange: 'Apr 19 – Apr 28',
-      status: 'upcoming',
-      statusLabel: 'Upcoming',
-      progress: 0,
-      milestone: 'Classroom Live Presentation',
-      milestoneDate: 'Apr 28',
-      dependsOn: 'phase-2',
-      tasks: [
-        { id: 't3-1', title: 'Student usability testing sprint', owner: 'Alex Park', status: 'To do', role: 'QA' },
-        { id: 't3-2', title: 'Classroom presentation dry-run', owner: 'Alex Rivera', status: 'To do', role: 'Lead' },
-      ],
-      description: 'Beta user validation with campus students, regression fixes, and demo slides for class grading.',
-    },
-  ];
+      {
+        id: 'phase-2',
+        number: 2,
+        name: 'Sprint Execution',
+        dateRange: 'Current',
+        status: 'in-progress',
+        statusLabel: 'In Progress',
+        progress: 50,
+        milestone: 'First Deliverable',
+        milestoneDate: project.dueDate || 'Flexible',
+        tasks: [
+          { id: 't2-1', title: 'Define tasks and assign owners', owner: 'Team', status: 'In progress', role: 'Developer' },
+        ],
+        description: 'Add new tasks in the board tab to populate this timeline.',
+      },
+      {
+        id: 'phase-3',
+        number: 3,
+        name: 'Review & Submission',
+        dateRange: project.dueDate || 'Upcoming',
+        status: 'upcoming',
+        statusLabel: 'Upcoming',
+        progress: 0,
+        milestone: 'Final Project Demo',
+        milestoneDate: project.dueDate || 'Upcoming',
+        dependsOn: 'phase-2',
+        tasks: [
+          { id: 't3-1', title: 'Final project review & showcase', owner: 'Team', status: 'To do', role: 'Review' },
+        ],
+        description: 'Sprint wrap-up and final demo delivery.',
+      },
+    ];
+  }, [project, tasks]);
 
   return (
     <div className="space-y-6">

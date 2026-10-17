@@ -14,6 +14,7 @@ import {
   Layers, 
   Link, 
   UserCheck, 
+  UserPlus,
   Clock, 
   Check, 
   AlertCircle, 
@@ -61,6 +62,8 @@ export const CreateProject: React.FC<CreateProjectProps> = ({
   const [newTagInput, setNewTagInput] = useState('');
   const [showTagInput, setShowTagInput] = useState(false);
   const [showMentionHelper, setShowMentionHelper] = useState(true);
+  const [pendingTelegramUsername, setPendingTelegramUsername] = useState('');
+  const [createdInviteResult, setCreatedInviteResult] = useState<any>(null);
 
   // Draft plan state
   const [isGenerating, setIsGenerating] = useState(false);
@@ -142,10 +145,10 @@ export const CreateProject: React.FC<CreateProjectProps> = ({
     setRefinementInput('');
   };
 
-  const handleApproveAndCreate = () => {
+    const handleApproveAndCreate = async () => {
     const newProj: Project = {
       id: `proj-${Date.now()}`,
-      name: 'Campus Events Platform',
+      name: ideaText.slice(0, 32).trim() || 'Campus Events Platform',
       color: '#2563EB',
       description: ideaText,
       status: 'On track',
@@ -160,6 +163,24 @@ export const CreateProject: React.FC<CreateProjectProps> = ({
     };
 
     onApproveNewProject(newProj);
+
+    // If an invitee username was entered, issue the invitation against the created project
+    if (pendingTelegramUsername.trim()) {
+      try {
+        const { createProjectInvite } = await import('../lib/dataService');
+        const invite = await createProjectInvite({
+          projectId: newProj.id,
+          telegramUsername: pendingTelegramUsername.trim(),
+          role: 'member',
+          welcomeMessage: `Welcome! You've been invited to our newly created project: ${newProj.name}`,
+        });
+        setCreatedInviteResult(invite);
+        return; // stay on screen to show invite code modal
+      } catch (invErr) {
+        console.warn('[CreateProject] Could not issue invite immediately:', invErr);
+      }
+    }
+
     onNavigate('project-workspace', newProj.id);
   };
 
@@ -324,6 +345,32 @@ export const CreateProject: React.FC<CreateProjectProps> = ({
                 </div>
                 <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200 shrink-0" />
               </button>
+            </div>
+
+            {/* Telegram Invitee for New Project (Create-first, then issue invite) */}
+            <div className="p-3.5 bg-sky-50/70 dark:bg-sky-950/30 border border-sky-100 dark:border-sky-900/60 rounded-xl space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-sky-900 dark:text-sky-200 flex items-center gap-1.5">
+                  <UserPlus className="w-3.5 h-3.5 text-[#229ED9]" />
+                  <span>Invite New Member via Telegram</span>
+                </span>
+                <span className="text-[10px] text-sky-700 dark:text-sky-300 bg-sky-100 dark:bg-sky-900/60 px-2 py-0.5 rounded-full font-medium">
+                  Issues after creation
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-600 dark:text-slate-400">
+                Want to invite someone who hasn't joined yet? Enter their Telegram username below. PROJEX will create this project first, then immediately generate their single-use invite code.
+              </p>
+              <div className="relative">
+                <span className="absolute left-3 top-2 text-slate-400 font-semibold text-xs">@</span>
+                <input
+                  type="text"
+                  placeholder="telegram_username"
+                  value={pendingTelegramUsername}
+                  onChange={(e) => setPendingTelegramUsername(e.target.value.replace(/^@/, ''))}
+                  className="w-full pl-7 pr-3 py-1.5 text-xs bg-white dark:bg-slate-900 border border-sky-200 dark:border-sky-800 rounded-lg outline-none text-slate-900 dark:text-white focus:border-[#229ED9]"
+                />
+              </div>
             </div>
 
             {/* Tags / Keywords */}
@@ -688,6 +735,59 @@ export const CreateProject: React.FC<CreateProjectProps> = ({
         selectedMemberIds={selectedMemberIds}
         onApplySelection={(ids) => setSelectedMemberIds(ids)}
       />
+
+      {/* Generated Invite Modal after Project Creation */}
+      {createdInviteResult && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-md p-6 space-y-4 animate-fade-rise">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-[#229ED9]" />
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">Project Created & Invite Ready</h3>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+              Your new project has been activated. Here is the single-use invite code generated for <strong>{createdInviteResult.telegramUsername}</strong>:
+            </p>
+
+            <div className="p-3 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 rounded-2xl flex items-center justify-between">
+              <span className="font-mono text-base font-extrabold text-emerald-800 dark:text-emerald-300">
+                {createdInviteResult.inviteCode}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard?.writeText(createdInviteResult.inviteCode);
+                  alert(`Copied ${createdInviteResult.inviteCode} to clipboard!`);
+                }}
+                className="px-2.5 py-1 text-xs font-semibold bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 cursor-pointer"
+              >
+                Copy Code
+              </button>
+            </div>
+
+            <div className="text-[11px] text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/60 p-3 rounded-xl border border-slate-200 dark:border-slate-700 space-y-1">
+              <div>• Send command: <code className="font-mono bg-slate-200 dark:bg-slate-700 px-1 py-0.5 rounded">/join {createdInviteResult.inviteCode}</code> in Telegram</div>
+              <div>• Link: <a href={createdInviteResult.botLink} target="_blank" rel="noreferrer" className="text-[#229ED9] underline">Open PROJEX Bot ↗</a></div>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  const pid = createdInviteResult.projectId;
+                  setCreatedInviteResult(null);
+                  onNavigate('project-workspace', pid);
+                }}
+                className="px-5 py-2 bg-[#1E60FF] hover:bg-[#1A53DE] text-white text-xs font-semibold rounded-xl cursor-pointer"
+              >
+                Go to Project Workspace
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

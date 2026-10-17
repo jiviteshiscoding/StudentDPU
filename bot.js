@@ -26,33 +26,70 @@ const supabase = createClient(
   }
 );
 
+// ── In-memory rate limiter for bot commands ─────────────────────────────
+const BOT_RATE_LIMITS = new Map(); // telegramUserId -> { count, resetAt }
+
+function checkBotRateLimit(telegramUserId, limit = 8, windowMs = 60000) {
+  const key = String(telegramUserId);
+  const now = Date.now();
+  const entry = BOT_RATE_LIMITS.get(key) || { count: 0, resetAt: now + windowMs };
+  if (now > entry.resetAt) {
+    entry.count = 0;
+    entry.resetAt = now + windowMs;
+  }
+  entry.count += 1;
+  BOT_RATE_LIMITS.set(key, entry);
+  if (entry.count > limit) {
+    const waitSec = Math.ceil((entry.resetAt - now) / 1000);
+    return { allowed: false, waitSec };
+  }
+  return { allowed: true, waitSec: 0 };
+}
+
 async function getLinkedAccount(ctx) {
   if (ctx.chat.type !== "private") {
     return null;
   }
 
-  const { data, error } = await supabase
+  // 1. Try to find by external_user_id
+  let { data, error } = await supabase
     .from("messaging_accounts")
-    .select("id, user_id")
+    .select("id, user_id, connection_status, username")
     .eq("platform", "telegram")
     .eq("external_user_id", String(ctx.from.id))
-    .eq("connection_status", "connected")
     .maybeSingle();
 
   if (error) throw error;
+
+  // 2. If not found by external ID, try to match by username if the user registered on web
+  if (!data && ctx.from.username) {
+    const cleanUsername = ctx.from.username.toLowerCase();
+    const { data: userByUsername, error: matchErr } = await supabase
+      .from("messaging_accounts")
+      .select("id, user_id, connection_status, username")
+      .eq("platform", "telegram")
+      .ilike("username", cleanUsername)
+      .maybeSingle();
+
+    if (!matchErr && userByUsername) {
+      data = userByUsername;
+    }
+  }
 
   if (data) {
     const { error: updateError } = await supabase
       .from("messaging_accounts")
       .update({
+        external_user_id: String(ctx.from.id),
         private_chat_id: String(ctx.chat.id),
-        username: ctx.from.username ?? null,
+        username: ctx.from.username ?? data.username ?? null,
+        connection_status: "connected",
         last_seen_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
       .eq("id", data.id);
 
-    if (updateError) throw updateError;
+    if (updateError) console.warn("Could not update messaging_accounts:", updateError.message);
   }
 
   return data;
@@ -111,15 +148,60 @@ async function logIncomingMessage(ctx, account) {
 }
 
 bot.start(async (ctx) => {
+  const startArg = ctx.message.text.split(/\s+/)[1];
+  if (startArg && startArg.toUpperCase().startsWith("PRJ-")) {
+    await handleJoinCommand(ctx, startArg);
+    return;
+  }
+
   await ctx.reply(
-    "Welcome to your AI Coordinator!\n\n" +
+    "Welcome to PROJEX AI Coordinator!\n\n" +
     "Commands:\n" +
     "/projects - List your projects\n" +
     "/tasks 1 - List tasks in project 1\n" +
     "/task 1 Prepare presentation - Create a task\n" +
+    "/join CODE - Join project with your invite code\n" +
     "/help - Show commands"
   );
 });
+
+async function handleJoinCommand(ctx, code) {
+  try {
+    const cleanCode = (code || "").trim().toUpperCase();
+    if (!cleanCode) {
+      await ctx.reply("Please provide your invite code. Format:\n/join PRJ-XXXX");
+      return;
+    }
+
+    const res = await fetch("http://localhost:3001/api/invites/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        code: cleanCode,
+        telegramUserId: String(ctx.from.id),
+        telegramUsername: ctx.from.username || null,
+        chatId: String(ctx.chat.id),
+      }),
+    });
+
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      await ctx.reply(`❌ ${data.error || "Invite verification failed."}`);
+      return;
+    }
+
+    await ctx.reply(
+      `✅ Invite verified for project "${data.projectName}"!\n` +
+      `Role: ${data.role}\n\n` +
+      `Your Telegram identity has been bound to this invite.\n\n` +
+      `👉 Final Step: Open PROJEX on the web and click "Redeem Invite / Link Telegram", or sign up/log in to complete your membership setup.`
+    );
+  } catch (err) {
+    console.error("Join command error:", err);
+    await ctx.reply("Failed to verify invite code. Please make sure the PROJEX server is running.");
+  }
+}
 
 bot.on("text", async (ctx) => {
   try {
@@ -128,20 +210,37 @@ bot.on("text", async (ctx) => {
       return;
     }
 
+    // Rate limit: 8 commands per minute per user
+    const rateCheck = checkBotRateLimit(ctx.from.id);
+    if (!rateCheck.allowed) {
+      await ctx.reply(
+        `⏳ You're sending commands too quickly. Please wait ${rateCheck.waitSec}s before trying again.`
+      );
+      return;
+    }
+
+    const text = ctx.message.text.trim();
+    const [rawCommand = "", ...args] = text.split(/\s+/);
+    const command = rawCommand.split("@")[0].toLowerCase();
+
+    // Allow /join command even before the account is fully linked
+    if (command === "/join") {
+      await handleJoinCommand(ctx, args[0]);
+      return;
+    }
+
     const account = await getLinkedAccount(ctx);
 
     if (!account) {
       await ctx.reply(
-        "Your Telegram account is not linked. Please contact the project administrator."
+        "Your Telegram account is not yet linked to a PROJEX project.\n\n" +
+        "If you have an invite code from your project leader, join using:\n" +
+        "/join YOUR-CODE"
       );
       return;
     }
 
     await logIncomingMessage(ctx, account);
-
-    const text = ctx.message.text.trim();
-    const [rawCommand = "", ...args] = text.split(/\s+/);
-    const command = rawCommand.split("@")[0].toLowerCase();
 
     if (command === "/start" || command === "/help") {
       await ctx.reply(

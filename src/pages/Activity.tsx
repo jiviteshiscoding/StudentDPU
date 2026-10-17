@@ -108,6 +108,22 @@ export const Activity: React.FC<ActivityProps> = ({
         </div>
       </div>
 
+      {/* Leader Audit Security Status Banner */}
+      <div className="bg-blue-50/60 dark:bg-blue-950/30 border border-blue-200/80 dark:border-blue-900/40 rounded-2xl p-4 flex items-start gap-3 text-xs text-blue-900 dark:text-blue-200">
+        <ShieldCheck className="w-5 h-5 text-[#1E60FF] dark:text-blue-400 shrink-0 mt-0.5" />
+        <div className="space-y-1">
+          <div className="font-semibold text-blue-950 dark:text-blue-100 flex items-center gap-2">
+            <span>Leader-Gated Audit Log</span>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300">
+              Leader Authorized
+            </span>
+          </div>
+          <p className="text-blue-800/90 dark:text-blue-300/80 leading-relaxed">
+            Database table <code className="bg-blue-100 dark:bg-blue-900/60 px-1 py-0.5 rounded">task_history</code> records Telegram bot and website mutations server-side. Direct browser access requires human review of proposed leader-only SELECT policies; displaying verified authorized timeline events below.
+          </p>
+        </div>
+      </div>
+
       {/* Filter Row: Dropdowns */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-900 border border-[#E2E8F0] dark:border-slate-800 rounded-xl text-xs font-semibold text-[#0F172A] dark:text-white cursor-pointer">

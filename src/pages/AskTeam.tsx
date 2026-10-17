@@ -32,6 +32,7 @@ import { ProjexLogo } from '../components/common/ProjexLogo';
 interface AskTeamProps {
   messages: ChatMessage[];
   onSendMessage: (msg: string, channel: string) => void;
+  onConfirmAction?: (action: ActionCardData) => Promise<{ success: boolean; message: string }>;
   teamMembers: TeamMember[];
   projects: Project[];
   isPendingResponse?: boolean;
@@ -40,6 +41,7 @@ interface AskTeamProps {
 export const AskTeam: React.FC<AskTeamProps> = ({
   messages,
   onSendMessage,
+  onConfirmAction,
   teamMembers,
   projects,
   isPendingResponse = false,
@@ -55,6 +57,38 @@ export const AskTeam: React.FC<AskTeamProps> = ({
   const [isTyping, setIsTyping] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  // Telegram link status & inputs
+  const [telegramStatus, setTelegramStatus] = useState<{
+    linked: boolean;
+    status: 'connected' | 'pending_link' | 'not_linked';
+    telegramUsername: string | null;
+    botLink: string;
+  }>({
+    linked: false,
+    status: 'not_linked',
+    telegramUsername: null,
+    botLink: 'https://t.me/DYP_AI_Coordinator_Bot',
+  });
+  const [sideTgUsername, setSideTgUsername] = useState('');
+  const [isLinkingTg, setIsLinkingTg] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    import('../lib/dataService').then(({ fetchTelegramStatus }) => {
+      fetchTelegramStatus()
+        .then(tg => {
+          if (isMounted && tg) {
+            setTelegramStatus(tg);
+            if (tg.telegramUsername) {
+              setSideTgUsername(tg.telegramUsername.replace(/^@/, ''));
+            }
+          }
+        })
+        .catch(() => {});
+    });
+    return () => { isMounted = false; };
+  }, []);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -66,19 +100,19 @@ export const AskTeam: React.FC<AskTeamProps> = ({
     { name: 'Email', status: 'Not connected', note: 'Requires SMTP service' },
   ];
 
-  const peopleMentions = [
-    { name: 'Alex Rivera', role: 'Project Lead', handle: '@Alex', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150' },
-    { name: 'Maya Chen', role: 'Product Designer', handle: '@Maya', avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150' },
-    { name: 'Daniel Kim', role: 'Fullstack Developer', handle: '@Daniel', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150' },
-    { name: 'Priya Singh', role: 'Backend & DB', handle: '@Priya', avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150' },
-    { name: 'Jamie Chen', role: 'QA & Research', handle: '@Jamie', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150' },
-  ];
+  // Derive mentions dynamically from actual team members
+  const peopleMentions = (teamMembers || []).map(m => ({
+    name: m.name,
+    role: m.role || 'Member',
+    handle: `@${m.name.split(' ')[0]}`,
+    avatar: m.avatarUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(m.name)}`,
+  }));
 
   const roleMentions = [
     { name: 'team-leads', desc: 'Project Leadership', handle: '@team-leads', icon: Users },
-    { name: 'frontend', desc: 'UI & Integration (3)', handle: '@frontend', icon: Code },
-    { name: 'design', desc: 'Wireframes & Design System (2)', handle: '@design', icon: Palette },
-    { name: 'product', desc: 'Scope & User Feedback (2)', handle: '@product', icon: Briefcase },
+    { name: 'frontend', desc: 'UI & Integration', handle: '@frontend', icon: Code },
+    { name: 'design', desc: 'Wireframes & UI System', handle: '@design', icon: Palette },
+    { name: 'product', desc: 'Scope & User Feedback', handle: '@product', icon: Briefcase },
   ];
 
   // Auto-scroll on new message
@@ -111,11 +145,30 @@ export const AskTeam: React.FC<AskTeamProps> = ({
     }
   };
 
-  const handleConfirmAction = () => {
-    if (actionConfirmModal) {
-      setSentActionIds(prev => ({ ...prev, [actionConfirmModal.id]: true }));
+  const handleConfirmAction = async () => {
+    if (!actionConfirmModal) return;
+    const action = actionConfirmModal;
+    
+    if (onConfirmAction && (action.type === 'task_update' || action.channel === 'Telegram')) {
+      try {
+        const res = await onConfirmAction(action);
+        if (!res.success) {
+          setToastMessage(`Delivery Failed: ${res.message}`);
+          setTimeout(() => setToastMessage(null), 6000);
+          return;
+        }
+        setSentActionIds(prev => ({ ...prev, [action.id]: true }));
+        setActionConfirmModal(null);
+        setToastMessage(res.message || `Sent: "${action.title}"`);
+        setTimeout(() => setToastMessage(null), 5000);
+      } catch (err: any) {
+        setToastMessage(`Error: ${err?.message || 'Failed to dispatch action'}`);
+        setTimeout(() => setToastMessage(null), 6000);
+      }
+    } else {
+      setSentActionIds(prev => ({ ...prev, [action.id]: true }));
       setActionConfirmModal(null);
-      setToastMessage(`Draft confirmed locally: "${actionConfirmModal.title}". Note: No external message or calendar event was created.`);
+      setToastMessage(`Draft confirmed locally: "${action.title}". Note: No external message or calendar event was created.`);
       setTimeout(() => setToastMessage(null), 5000);
     }
   };
@@ -216,7 +269,11 @@ export const AskTeam: React.FC<AskTeamProps> = ({
               <Bot className="w-4 h-4 text-[#1E60FF]" />
               <span className="font-semibold text-slate-700 dark:text-slate-200">PROJEX Coordinator</span>
               <span className="text-slate-300 dark:text-slate-700">•</span>
-              <span>Dependency-aware model</span>
+              <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">Project Context Engine Active</span>
+              <span className="text-slate-300 dark:text-slate-700">•</span>
+              <span className="text-[10px] text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/60 px-1.5 py-0.5 rounded border border-amber-200/60 dark:border-amber-900/40">
+                Gemini API Key: Server Unconfigured
+              </span>
             </div>
 
             {/* Channel dropdown at top right of chat */}
@@ -348,16 +405,15 @@ export const AskTeam: React.FC<AskTeamProps> = ({
                                 key={card.id}
                                 className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-sm space-y-3 relative hover:border-blue-300 dark:hover:border-blue-700 transition-all"
                               >
-                                {/* Badge */}
-                                <div className="flex items-center justify-between">
-                                  <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 ${
-                                    isSent 
-                                      ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800' 
-                                      : 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800'
-                                  }`}>
-                                    {isSent ? '✓ Confirmed in prototype' : '⚠️ Draft · Needs confirmation'}
-                                  </span>
-                                </div>
+                                  <div className="flex items-center justify-between">
+                                    <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 ${
+                                      isSent 
+                                        ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800' 
+                                        : 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800'
+                                    }`}>
+                                      {isSent ? '✓ Confirmed & Applied' : '⚠️ Draft · Needs confirmation'}
+                                    </span>
+                                  </div>
 
                                 {/* Title & Desc */}
                                 <div className="flex items-start gap-2.5">
@@ -401,23 +457,78 @@ export const AskTeam: React.FC<AskTeamProps> = ({
                                 {/* Message Details */}
                                 {card.type === 'message' && (
                                   <div className="space-y-2 text-xs bg-slate-50 dark:bg-slate-800/60 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800">
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">Target Assignee:</span>
-                                      {card.targetPerson && (
-                                        <>
-                                          <img
-                                            src={card.targetPerson.avatar}
-                                            alt={card.targetPerson.name}
-                                            className="w-4 h-4 rounded-full object-cover"
-                                          />
-                                          <span className="text-[11px] font-bold text-slate-900 dark:text-white">{card.targetPerson.name}</span>
-                                          <span className="text-[10px] text-slate-500">({card.targetPerson.role})</span>
-                                        </>
-                                      )}
-                                    </div>
+                                    {card.channel === 'Telegram' && card.telegramDelivery?.resolvedRecipients ? (
+                                      <div className="space-y-1.5">
+                                        <div className="flex items-center justify-between text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                                          <span className="flex items-center gap-1.5">
+                                            <ChannelBrandIcon channel="Telegram" size={13} />
+                                            <span>Target Telegram Recipients:</span>
+                                          </span>
+                                          <span className="text-[10px] text-blue-600 dark:text-blue-400 font-bold">
+                                            {card.telegramDelivery.resolvedRecipients.filter(r => r.isLinked).length} Linked
+                                          </span>
+                                        </div>
+                                        <div className="space-y-1">
+                                          {card.telegramDelivery.resolvedRecipients.map((rec, i) => (
+                                            <div key={i} className="flex items-center justify-between p-1.5 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 text-[11px]">
+                                              <div className="flex items-center gap-1.5 truncate">
+                                                <span className="font-semibold text-slate-800 dark:text-slate-200">{rec.name}</span>
+                                                <span className="text-[10px] text-slate-400 truncate">({rec.role})</span>
+                                              </div>
+                                              <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${
+                                                rec.isLinked
+                                                  ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800'
+                                                  : 'bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800'
+                                              }`}>
+                                                {rec.isLinked ? '✓ Telegram Linked' : '✗ Unlinked'}
+                                              </span>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">Target Assignee:</span>
+                                        {card.targetPerson && (
+                                          <>
+                                            <img
+                                              src={card.targetPerson.avatar}
+                                              alt={card.targetPerson.name}
+                                              className="w-4 h-4 rounded-full object-cover"
+                                            />
+                                            <span className="text-[11px] font-bold text-slate-900 dark:text-white">{card.targetPerson.name}</span>
+                                            <span className="text-[10px] text-slate-500">({card.targetPerson.role})</span>
+                                          </>
+                                        )}
+                                      </div>
+                                    )}
                                     <div className="text-[11px] text-slate-600 dark:text-slate-300 italic bg-white dark:bg-slate-900 p-2 rounded-lg border border-slate-200 dark:border-slate-700">
                                       "{card.suggestedMessage}"
                                     </div>
+                                  </div>
+                                )}
+
+                                {/* Task Update Details */}
+                                {card.type === 'task_update' && (
+                                  <div className="space-y-2 text-xs bg-slate-50 dark:bg-slate-800/60 p-3 rounded-xl border border-slate-200/80 dark:border-slate-700">
+                                    <div className="flex items-center justify-between text-[11px]">
+                                      <span className="text-slate-500 dark:text-slate-400">Current Status:</span>
+                                      <span className="font-semibold px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+                                        {card.currentStatus || 'To do'}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center justify-between text-[11px]">
+                                      <span className="text-slate-500 dark:text-slate-400">Proposed Status:</span>
+                                      <span className="font-bold px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-950/80 text-[#1E60FF] dark:text-blue-400 border border-blue-200 dark:border-blue-800">
+                                        {card.newStatus || 'Done'}
+                                      </span>
+                                    </div>
+                                    {card.reason && (
+                                      <div className="text-[11px] text-slate-600 dark:text-slate-300 pt-1.5 border-t border-slate-200 dark:border-slate-700">
+                                        <span className="font-semibold text-slate-700 dark:text-slate-200">Reason: </span>
+                                        {card.reason}
+                                      </div>
+                                    )}
                                   </div>
                                 )}
 
@@ -435,10 +546,12 @@ export const AskTeam: React.FC<AskTeamProps> = ({
                                     className={`px-3.5 py-1.5 text-xs font-semibold rounded-xl shadow-xs transition-colors cursor-pointer ${
                                       isSent
                                         ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
+                                        : card.channel === 'Telegram'
+                                        ? 'bg-[#229ED9] hover:bg-[#1E8BBE] text-white'
                                         : 'bg-[#1E60FF] hover:bg-[#1A53DE] text-white'
                                     }`}
                                   >
-                                    {isSent ? 'Confirmed' : 'Confirm Action'}
+                                    {isSent ? 'Sent' : card.channel === 'Telegram' ? 'Review & Send' : 'Confirm Action'}
                                   </button>
                                 </div>
                               </div>
@@ -627,9 +740,102 @@ export const AskTeam: React.FC<AskTeamProps> = ({
           </div>
         </div>
 
-        {/* Right Side Panels: People & Roles, Recent Requests (4 cols, collapsible) */}
+        {/* Right Side Panels: Telegram Status, People & Roles, Recent Requests (4 cols, collapsible) */}
         {showSidePanels && (
           <div className="lg:col-span-4 space-y-6 animate-fade-rise">
+            {/* Telegram Bot Integration Card */}
+            <div className="bg-white dark:bg-[#0D131F] rounded-3xl border border-[#E2E8F0] dark:border-slate-800/80 p-5 shadow-xs space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-sky-50 dark:bg-sky-950/60 text-[#229ED9] flex items-center justify-center">
+                    <ChannelBrandIcon channel="Telegram" size={16} />
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-bold text-[#0F172A] dark:text-white">Telegram AI Bot</h3>
+                    <div className="text-[10px] text-slate-400">Inbound task listener & mentions</div>
+                  </div>
+                </div>
+                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
+                  telegramStatus.status === 'connected'
+                    ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800'
+                    : telegramStatus.status === 'pending_link'
+                    ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+                }`}>
+                  {telegramStatus.status === 'connected'
+                    ? 'Connected'
+                    : telegramStatus.status === 'pending_link'
+                    ? 'Pending Link'
+                    : 'Not Linked'}
+                </span>
+              </div>
+
+              {/* Show username prompt if not linked */}
+              {telegramStatus.status !== 'connected' && (
+                <div className="p-3 bg-slate-50 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-2">
+                  <div className="text-[11px] font-bold text-slate-800 dark:text-white flex items-center justify-between">
+                    <span>Connect your Telegram</span>
+                    <span className="text-[9px] text-[#229ED9]">Required for mentions</span>
+                  </div>
+                  <div className="flex gap-1.5">
+                    <div className="relative flex-1">
+                      <span className="absolute left-2.5 top-1.5 text-xs text-slate-400">@</span>
+                      <input
+                        type="text"
+                        placeholder="telegram_username"
+                        value={sideTgUsername}
+                        onChange={(e) => setSideTgUsername(e.target.value.replace(/^@/, ''))}
+                        className="w-full pl-6 pr-2 py-1 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:border-[#229ED9]"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      disabled={isLinkingTg || !sideTgUsername.trim()}
+                      onClick={async () => {
+                        setIsLinkingTg(true);
+                        try {
+                          const { linkTelegramUsername, fetchTelegramStatus } = await import('../lib/dataService');
+                          const res = await linkTelegramUsername(sideTgUsername.trim());
+                          setToastMessage(res.message);
+                          const updated = await fetchTelegramStatus();
+                          setTelegramStatus(updated);
+                        } catch (err: any) {
+                          setToastMessage(err.message || 'Failed to link');
+                        } finally {
+                          setIsLinkingTg(false);
+                        }
+                      }}
+                      className="px-2.5 py-1 text-[11px] font-semibold bg-[#229ED9] hover:bg-[#1E8BBE] text-white rounded-lg disabled:opacity-50 cursor-pointer"
+                    >
+                      {isLinkingTg ? 'Saving...' : 'Link'}
+                    </button>
+                  </div>
+                  {telegramStatus.status === 'pending_link' && (
+                    <div className="text-[10px] text-amber-600 dark:text-amber-400">
+                      Almost there! Send <code className="bg-amber-100 dark:bg-amber-950 px-1 rounded">/start</code> to <a href={telegramStatus.botLink} target="_blank" rel="noreferrer" className="underline font-bold">@DYP_AI_Coordinator_Bot</a> to finish.
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
+                Commands sent to the Telegram bot automatically sync to your database and update this website in real time:
+              </p>
+
+              <div className="bg-slate-50 dark:bg-slate-900/60 rounded-xl p-2.5 font-mono text-[11px] space-y-1 text-slate-700 dark:text-slate-300 border border-slate-100 dark:border-slate-800">
+                <div><span className="text-[#1E60FF] font-bold">/projects</span> — List accessible projects</div>
+                <div><span className="text-[#1E60FF] font-bold">/tasks 1</span> — List tasks in project #1</div>
+                <div><span className="text-[#1E60FF] font-bold">/task 1 Title</span> — Create new task</div>
+              </div>
+
+              <div className="text-[10px] text-slate-400 dark:text-slate-500 pt-1 flex items-center justify-between">
+                <span>Bot: @DYP_AI_Coordinator_Bot</span>
+                <a href={telegramStatus.botLink || 'https://t.me/DYP_AI_Coordinator_Bot'} target="_blank" rel="noreferrer" className="text-[#229ED9] hover:underline font-semibold">
+                  Open Bot ↗
+                </a>
+              </div>
+            </div>
+
             {/* People & Roles Panel */}
             <div className="bg-white dark:bg-[#0D131F] rounded-3xl border border-[#E2E8F0] dark:border-slate-800/80 p-6 shadow-xs space-y-4">
               <div className="flex items-center justify-between">
@@ -642,24 +848,30 @@ export const AskTeam: React.FC<AskTeamProps> = ({
 
               {/* People List */}
               <div className="space-y-1">
-                {peopleMentions.map((p) => (
-                  <div
-                    key={p.handle}
-                    onClick={() => handleInsertMention(p.handle)}
-                    className="p-2 flex items-center justify-between rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/60 cursor-pointer transition-colors"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <img src={p.avatar} alt={p.name} className="w-7 h-7 rounded-full object-cover" />
-                      <div>
-                        <div className="text-xs font-bold text-[#0F172A] dark:text-white">{p.name}</div>
-                        <div className="text-[10px] text-[#64748B] dark:text-slate-400">{p.role}</div>
-                      </div>
-                    </div>
-                    <span className="text-[11px] font-semibold text-[#1E60FF] dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 px-2 py-0.5 rounded-md">
-                      {p.handle}
-                    </span>
+                {peopleMentions.length === 0 ? (
+                  <div className="p-3 text-center text-xs text-slate-400 bg-slate-50 dark:bg-slate-900/40 rounded-xl border border-dashed border-slate-200 dark:border-slate-800">
+                    No team members added yet
                   </div>
-                ))}
+                ) : (
+                  peopleMentions.map((p) => (
+                    <div
+                      key={p.handle}
+                      onClick={() => handleInsertMention(p.handle)}
+                      className="p-2 flex items-center justify-between rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/60 cursor-pointer transition-colors"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <img src={p.avatar} alt={p.name} className="w-7 h-7 rounded-full object-cover" />
+                        <div>
+                          <div className="text-xs font-bold text-[#0F172A] dark:text-white">{p.name}</div>
+                          <div className="text-[10px] text-[#64748B] dark:text-slate-400">{p.role}</div>
+                        </div>
+                      </div>
+                      <span className="text-[11px] font-semibold text-[#1E60FF] dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 px-2 py-0.5 rounded-md">
+                        {p.handle}
+                      </span>
+                    </div>
+                  ))
+                )}
               </div>
 
               {/* Roles List */}
@@ -776,17 +988,44 @@ export const AskTeam: React.FC<AskTeamProps> = ({
 
             <div className="space-y-3 text-xs text-slate-700 dark:text-slate-300">
               <p>
-                You are about to confirm and execute the following coordinator action locally:
+                {actionConfirmModal.type === 'task_update'
+                  ? 'Review the proposed database update before applying:'
+                  : actionConfirmModal.channel === 'Telegram'
+                  ? 'Review the Telegram broadcast message before sending via official Bot API:'
+                  : 'You are about to confirm and execute the following coordinator action locally:'}
               </p>
               <div className="p-3.5 bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-900/60 rounded-2xl space-y-1.5">
                 <div className="font-bold text-blue-900 dark:text-blue-200 text-sm">{actionConfirmModal.title}</div>
                 <p className="text-blue-700 dark:text-blue-300 text-xs">{actionConfirmModal.description}</p>
-                <div className="text-[11px] text-blue-600 dark:text-blue-400 pt-1 border-t border-blue-200/50 dark:border-blue-900/60">
-                  Simulated channel: <strong>{selectedChannel}</strong>
-                </div>
+                {actionConfirmModal.type === 'task_update' ? (
+                  <div className="text-[11px] text-blue-800 dark:text-blue-300 pt-1.5 border-t border-blue-200/50 dark:border-blue-900/60 flex items-center justify-between">
+                    <span>Target: <strong>{actionConfirmModal.currentStatus} → {actionConfirmModal.newStatus}</strong></span>
+                    <span className="text-[10px] bg-blue-100 dark:bg-blue-900 px-1.5 py-0.5 rounded">status, updated_at only</span>
+                  </div>
+                ) : actionConfirmModal.channel === 'Telegram' ? (
+                  <div className="text-[11px] text-blue-800 dark:text-blue-300 pt-1.5 border-t border-blue-200/50 dark:border-blue-900/60 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span>Delivery Channel: <strong>Official Telegram Bot API</strong></span>
+                      <span className="text-[10px] bg-sky-100 dark:bg-sky-900 text-sky-800 dark:text-sky-200 px-1.5 py-0.5 rounded">Verified Chat ID</span>
+                    </div>
+                    {actionConfirmModal.suggestedMessage && (
+                      <div className="text-slate-600 dark:text-slate-300 italic bg-white/70 dark:bg-slate-900/70 p-2 rounded border border-blue-100 dark:border-blue-900">
+                        "{actionConfirmModal.suggestedMessage}"
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-[11px] text-blue-600 dark:text-blue-400 pt-1 border-t border-blue-200/50 dark:border-blue-900/60">
+                    Simulated channel: <strong>{selectedChannel}</strong>
+                  </div>
+                )}
               </div>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                In PROJEX, consequential team requests require explicit human confirmation. Confirming updates your local workspace simulation; no external communications are sent.
+                {actionConfirmModal.type === 'task_update'
+                  ? 'In PROJEX, AI-proposed database mutations require explicit human review. Confirming updates the live database.'
+                  : actionConfirmModal.channel === 'Telegram'
+                  ? 'Outbound Telegram messages are delivered directly to verified recipients who have started the PROJEX bot. Delivery will be logged to message_events.'
+                  : 'In PROJEX, consequential team requests require explicit human confirmation. Confirming updates your local workspace simulation; no external communications are sent.'}
               </p>
             </div>
 
@@ -799,9 +1038,17 @@ export const AskTeam: React.FC<AskTeamProps> = ({
               </button>
               <button
                 onClick={handleConfirmAction}
-                className="px-4 py-2 bg-[#1E60FF] hover:bg-[#1A53DE] text-white text-xs font-semibold rounded-xl cursor-pointer shadow-xs"
+                className={`px-4 py-2 text-white text-xs font-semibold rounded-xl cursor-pointer shadow-xs ${
+                  actionConfirmModal.channel === 'Telegram'
+                    ? 'bg-[#229ED9] hover:bg-[#1E8BBE]'
+                    : 'bg-[#1E60FF] hover:bg-[#1A53DE]'
+                }`}
               >
-                Confirm & Update Prototype
+                {actionConfirmModal.type === 'task_update'
+                  ? 'Confirm & Apply Update'
+                  : actionConfirmModal.channel === 'Telegram'
+                  ? 'Confirm & Send to Telegram'
+                  : 'Confirm & Update Prototype'}
               </button>
             </div>
           </div>

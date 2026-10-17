@@ -109,6 +109,17 @@ export const Files: React.FC<FilesProps> = ({
         </button>
       </div>
 
+      {/* Storage Configuration Notice */}
+      <div className="bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-900/40 rounded-2xl p-4 flex items-start gap-3 text-xs text-amber-900 dark:text-amber-200">
+        <div className="w-5 h-5 rounded-full bg-amber-500 text-white flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">!</div>
+        <div className="space-y-1">
+          <div className="font-semibold text-amber-950 dark:text-amber-100">Supabase Storage Bucket Not Configured</div>
+          <p className="text-amber-800/90 dark:text-amber-300/80 leading-relaxed">
+            The remote database currently does not have a configured Storage bucket or <code className="bg-amber-100 dark:bg-amber-900/60 px-1 py-0.5 rounded">files</code> table. File browsing and uploads operate in local prototype demo mode until a Storage bucket is provisioned.
+          </p>
+        </div>
+      </div>
+
       {/* Tabs */}
       <div className="flex items-center gap-6 border-b border-[#E2E8F0] dark:border-slate-800 text-sm font-semibold">
         {[

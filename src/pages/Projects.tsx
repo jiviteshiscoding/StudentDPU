@@ -16,6 +16,8 @@ interface ProjectsProps {
   teamMembers: TeamMember[];
   onSelectProject: (projectId: string) => void;
   onNavigate: (screen: string) => void;
+  isLoading?: boolean;
+  errorMessage?: string | null;
 }
 
 export const Projects: React.FC<ProjectsProps> = ({
@@ -23,6 +25,8 @@ export const Projects: React.FC<ProjectsProps> = ({
   teamMembers,
   onSelectProject,
   onNavigate,
+  isLoading = false,
+  errorMessage = null,
 }) => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -118,8 +122,47 @@ export const Projects: React.FC<ProjectsProps> = ({
         </div>
       </div>
 
-      {/* Grid View */}
-      {viewMode === 'grid' ? (
+      {/* Error State Banner */}
+      {errorMessage && (
+        <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-xs text-rose-700 dark:text-rose-300">
+          <p className="font-bold">Unable to load projects from Supabase</p>
+          <p className="mt-0.5">{errorMessage}</p>
+        </div>
+      )}
+
+      {/* Loading Skeleton */}
+      {isLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[1, 2, 3].map((n) => (
+            <div key={n} className="bg-white dark:bg-[#0D131F] rounded-2xl border border-slate-200 dark:border-slate-800 p-6 space-y-4 animate-pulse">
+              <div className="flex items-center gap-2.5">
+                <div className="w-3.5 h-3.5 rounded-full bg-slate-200 dark:bg-slate-700" />
+                <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-1/2" />
+              </div>
+              <div className="h-3 bg-slate-100 dark:bg-slate-800 rounded w-3/4" />
+              <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded w-full" />
+            </div>
+          ))}
+        </div>
+      ) : filteredProjects.length === 0 ? (
+        /* Empty State */
+        <div className="bg-white dark:bg-[#0D131F] rounded-2xl border border-[#E2E8F0] dark:border-slate-800/80 p-12 text-center space-y-3">
+          <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-950/60 text-[#1E60FF] dark:text-blue-400 flex items-center justify-center mx-auto">
+            <Plus className="w-6 h-6" />
+          </div>
+          <h3 className="text-base font-bold text-slate-900 dark:text-white">No projects found</h3>
+          <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+            You don't have any accessible projects matching your search criteria. Create a new project to get started.
+          </p>
+          <button
+            onClick={() => onNavigate('create-project')}
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#1E60FF] hover:bg-[#1A53DE] text-white rounded-xl text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+          >
+            <Plus className="w-4 h-4 stroke-[2.5]" />
+            <span>Create project</span>
+          </button>
+        </div>
+      ) : viewMode === 'grid' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredProjects.map((proj) => {
             const memberAvatars = teamMembers.map(m => ({ name: m.name, url: m.avatarUrl }));
